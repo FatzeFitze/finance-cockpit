@@ -1,18 +1,89 @@
-import type { Expense } from '../../expenses/model/expense.types';
-import { mockExpenses } from './mock-expenses';
+import type { SQLiteDatabase } from 'expo-sqlite';
 
-export function listExpenses(): Expense[] {
-  return [...mockExpenses].sort((a, b) => b.date.localeCompare(a.date));
+import type { CreateExpenseInput, Expense, ExpenseCategory } from '../model/expense.types';
+
+type ExpenseRow = {
+  id: string;
+  merchant: string;
+  amount: number;
+  currency: 'EUR' | 'USD';
+  date: string;
+  category: string;
+  note: string | null;
+  created_at: string;
+};
+
+function mapRowToExpense(row: ExpenseRow): Expense {
+  return {
+    id: row.id,
+    merchant: row.merchant,
+    amount: row.amount,
+    currency: row.currency,
+    date: row.date,
+    category: row.category as ExpenseCategory,
+    note: row.note,
+    createdAt: row.created_at,
+  };
 }
 
-export function getRecentExpenses(limit = 3): Expense[] {
-  return listExpenses().slice(0, limit);
+export async function listExpenses(db: SQLiteDatabase): Promise<Expense[]> {
+  const rows = await db.getAllAsync<ExpenseRow>(
+    `SELECT id, merchant, amount, currency, date, category, note, created_at
+     FROM expenses
+     ORDER BY date DESC, created_at DESC`
+  );
+
+  return rows.map(mapRowToExpense);
 }
 
-export function getExpenseCount(): number {
-  return mockExpenses.length;
+export async function getRecentExpenses(
+  db: SQLiteDatabase,
+  limit = 3
+): Promise<Expense[]> {
+  const rows = await db.getAllAsync<ExpenseRow>(
+    `SELECT id, merchant, amount, currency, date, category, note, created_at
+     FROM expenses
+     ORDER BY date DESC, created_at DESC
+     LIMIT ?`,
+    limit
+  );
+
+  return rows.map(mapRowToExpense);
 }
 
-export function getExpenseTotal(): number {
-  return mockExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+export async function getExpenseStats(
+  db: SQLiteDatabase
+): Promise<{ count: number; total: number }> {
+  const row = await db.getFirstAsync<{ count: number; total: number | null }>(
+    `SELECT COUNT(*) as count, SUM(amount) as total
+     FROM expenses`
+  );
+
+  return {
+    count: row?.count ?? 0,
+    total: row?.total ?? 0,
+  };
+}
+
+export async function createExpense(
+  db: SQLiteDatabase,
+  input: CreateExpenseInput
+): Promise<void> {
+  const id = `${Date.now()}-${Math.round(Math.random() * 1_000_000)}`;
+  const note = input.note?.trim() ? input.note.trim() : null;
+  const createdAt = new Date().toISOString();
+
+  await db.runAsync(
+    `INSERT INTO expenses
+      (id, merchant, amount, currency, date, category, note, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    id,
+    input.merchant.trim(),
+    input.amount,
+    input.currency,
+    input.date,
+    input.category,
+    note,
+    createdAt
+  );
 }
