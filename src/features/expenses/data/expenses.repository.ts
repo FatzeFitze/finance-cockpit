@@ -11,6 +11,9 @@ type ExpenseRow = {
   category: string;
   note: string | null;
   created_at: string;
+  receipt_uri: string | null;
+  receipt_name: string | null;
+  receipt_mime_type: string | null;
 };
 
 function mapRowToExpense(row: ExpenseRow): Expense {
@@ -23,12 +26,16 @@ function mapRowToExpense(row: ExpenseRow): Expense {
     category: row.category as ExpenseCategory,
     note: row.note,
     createdAt: row.created_at,
+    receiptUri: row.receipt_uri,
+    receiptName: row.receipt_name,
+    receiptMimeType: row.receipt_mime_type,
   };
 }
 
 export async function listExpenses(db: SQLiteDatabase): Promise<Expense[]> {
   const rows = await db.getAllAsync<ExpenseRow>(
-    `SELECT id, merchant, amount, currency, date, category, note, created_at
+    `SELECT id, merchant, amount, currency, date, category, note, created_at,
+            receipt_uri, receipt_name, receipt_mime_type
      FROM expenses
      ORDER BY date DESC, created_at DESC`
   );
@@ -41,7 +48,8 @@ export async function getRecentExpenses(
   limit = 3
 ): Promise<Expense[]> {
   const rows = await db.getAllAsync<ExpenseRow>(
-    `SELECT id, merchant, amount, currency, date, category, note, created_at
+    `SELECT id, merchant, amount, currency, date, category, note, created_at,
+            receipt_uri, receipt_name, receipt_mime_type
      FROM expenses
      ORDER BY date DESC, created_at DESC
      LIMIT ?`,
@@ -75,8 +83,9 @@ export async function createExpense(
 
   await db.runAsync(
     `INSERT INTO expenses
-      (id, merchant, amount, currency, date, category, note, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      (id, merchant, amount, currency, date, category, note, created_at,
+       receipt_uri, receipt_name, receipt_mime_type)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
     input.merchant.trim(),
     input.amount,
@@ -84,6 +93,9 @@ export async function createExpense(
     input.date,
     input.category,
     note,
-    createdAt
+    createdAt,
+    input.receiptUri ?? null,
+    input.receiptName ?? null,
+    input.receiptMimeType ?? null
   );
 }

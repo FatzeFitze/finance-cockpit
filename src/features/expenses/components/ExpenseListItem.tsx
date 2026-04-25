@@ -28,6 +28,10 @@ export function ExpenseListItem({ expense }: ExpenseListItemProps) {
       </View>
 
       {expense.note ? <ThemedText style={styles.note}>{expense.note}</ThemedText> : null}
+
+      {expense.receiptName ? (
+        <ThemedText style={styles.attachment}>Receipt: {expense.receiptName}</ThemedText>
+      ) : null}
     </View>
   );
 }
@@ -46,6 +50,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   note: {
+    opacity: 0.75,
+  },
+  attachment: {
     opacity: 0.75,
   },
 });
