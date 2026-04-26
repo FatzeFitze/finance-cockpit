@@ -7,11 +7,13 @@ import { ExpenseListItem } from './ExpenseListItem';
 type ExpenseListProps = {
   expenses: Expense[];
   emptyMessage?: string;
+  onExpensePress?: (expense: Expense) => void;
 };
 
 export function ExpenseList({
   expenses,
   emptyMessage = 'No expenses yet.',
+  onExpensePress,
 }: ExpenseListProps) {
   if (expenses.length === 0) {
     return <ThemedText>{emptyMessage}</ThemedText>;
@@ -20,7 +22,11 @@ export function ExpenseList({
   return (
     <View style={styles.list}>
       {expenses.map((expense) => (
-        <ExpenseListItem key={expense.id} expense={expense} />
+        <ExpenseListItem
+          key={expense.id}
+          expense={expense}
+          onPress={onExpensePress ? () => onExpensePress(expense) : undefined}
+        />
       ))}
     </View>
   );

@@ -59,6 +59,21 @@ export async function getRecentExpenses(
   return rows.map(mapRowToExpense);
 }
 
+export async function getExpenseById(
+  db: SQLiteDatabase,
+  id: string
+): Promise<Expense | null> {
+  const row = await db.getFirstAsync<ExpenseRow>(
+    `SELECT id, merchant, amount, currency, date, category, note, created_at,
+            receipt_uri, receipt_name, receipt_mime_type
+     FROM expenses
+     WHERE id = ?`,
+    id
+  );
+
+  return row ? mapRowToExpense(row) : null;
+}
+
 export async function getExpenseStats(
   db: SQLiteDatabase
 ): Promise<{ count: number; total: number }> {

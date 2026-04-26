@@ -1,4 +1,5 @@
 import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet } from 'react-native';
@@ -11,6 +12,8 @@ import type { Expense } from '../model/expense.types';
 
 export default function ExpensesScreen() {
   const db = useSQLiteContext();
+  const router = useRouter();
+
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -41,6 +44,13 @@ export default function ExpensesScreen() {
     }, [db])
   );
 
+  function handleExpensePress(expense: Expense) {
+    router.push({
+      pathname: '/expenses/[id]',
+      params: { id: expense.id },
+    });
+  }
+
   return (
     <ThemedView style={styles.container}>
       <ThemedText type="title">Expenses</ThemedText>
@@ -49,7 +59,11 @@ export default function ExpensesScreen() {
       {isLoading ? (
         <ActivityIndicator />
       ) : (
-        <ExpenseList expenses={expenses} emptyMessage="No expenses yet." />
+        <ExpenseList
+          expenses={expenses}
+          emptyMessage="No expenses yet."
+          onExpensePress={handleExpensePress}
+        />
       )}
     </ThemedView>
   );

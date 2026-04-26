@@ -1,4 +1,5 @@
 import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
@@ -11,6 +12,8 @@ import type { Expense } from '../../expenses/model/expense.types';
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
+  const router = useRouter();
+
   const [expenseCount, setExpenseCount] = useState(0);
   const [total, setTotal] = useState(0);
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
@@ -49,6 +52,13 @@ export default function HomeScreen() {
     }, [db])
   );
 
+  function handleExpensePress(expense: Expense) {
+    router.push({
+      pathname: '/expenses/[id]',
+      params: { id: expense.id },
+    });
+  }
+
   const formattedTotal = new Intl.NumberFormat('de-DE', {
     style: 'currency',
     currency: 'EUR',
@@ -70,7 +80,11 @@ export default function HomeScreen() {
 
           <View style={styles.section}>
             <ThemedText type="subtitle">Recent expenses</ThemedText>
-            <ExpenseList expenses={recentExpenses} emptyMessage="No recent expenses." />
+            <ExpenseList
+              expenses={recentExpenses}
+              emptyMessage="No recent expenses."
+              onExpensePress={handleExpensePress}
+            />
           </View>
         </>
       )}

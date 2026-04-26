@@ -1,13 +1,14 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import type { Expense } from '../model/expense.types';
 
 type ExpenseListItemProps = {
   expense: Expense;
+  onPress?: () => void;
 };
 
-export function ExpenseListItem({ expense }: ExpenseListItemProps) {
+export function ExpenseListItem({ expense, onPress }: ExpenseListItemProps) {
   const formattedAmount = new Intl.NumberFormat('de-DE', {
     style: 'currency',
     currency: expense.currency,
@@ -15,7 +16,7 @@ export function ExpenseListItem({ expense }: ExpenseListItemProps) {
 
   const formattedDate = new Date(expense.date).toLocaleDateString();
 
-  return (
+  const content = (
     <View style={styles.card}>
       <View style={styles.row}>
         <ThemedText type="defaultSemiBold">{expense.merchant}</ThemedText>
@@ -34,6 +35,12 @@ export function ExpenseListItem({ expense }: ExpenseListItemProps) {
       ) : null}
     </View>
   );
+
+  if (!onPress) {
+    return content;
+  }
+
+  return <Pressable onPress={onPress}>{content}</Pressable>;
 }
 
 const styles = StyleSheet.create({
