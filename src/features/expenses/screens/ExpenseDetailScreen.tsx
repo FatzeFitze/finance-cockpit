@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
@@ -14,17 +14,19 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { getExpenseById } from '../data/expenses.repository';
+import { deleteExpense, getExpenseById } from '../data/expenses.repository';
 import type { Expense } from '../model/expense.types';
 
 export default function ExpenseDetailScreen() {
   const db = useSQLiteContext();
+  const router = useRouter();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
 
   const expenseId = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [expense, setExpense] = useState<Expense | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     let isActive = true;
@@ -78,6 +80,50 @@ export default function ExpenseDetailScreen() {
     }
   }
 
+  function handleEdit() {
+    if (!expense) {
+      return;
+    }
+
+    router.push({
+      pathname: '/expenses/[id]/edit',
+      params: { id: expense.id },
+    });
+  }
+
+  function handleDelete() {
+    if (!expense) {
+      return;
+    }
+
+    Alert.alert(
+      'Delete expense?',
+      `Delete "${expense.merchant}" permanently? This cannot be undone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsDeleting(true);
+              await deleteExpense(db, expense.id);
+              router.replace('/expenses');
+            } catch (error) {
+              console.error(error);
+              Alert.alert('Delete failed', 'Could not delete the expense.');
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  }
+
   const formattedAmount = expense
     ? new Intl.NumberFormat('de-DE', {
         style: 'currency',
@@ -85,10 +131,7 @@ export default function ExpenseDetailScreen() {
       }).format(expense.amount)
     : '';
 
-  const formattedDate = expense
-    ? new Date(expense.date).toLocaleDateString()
-    : '';
-
+  const formattedDate = expense ? new Date(expense.date).toLocaleDateString() : '';
   const isImageReceipt = !!expense?.receiptMimeType?.startsWith('image/');
 
   return (
@@ -107,6 +150,22 @@ export default function ExpenseDetailScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <ThemedText type="title">{expense.merchant}</ThemedText>
+
+          <View style={styles.actionsRow}>
+            <Pressable onPress={handleEdit} style={styles.secondaryButton}>
+              <ThemedText type="defaultSemiBold">Edit</ThemedText>
+            </Pressable>
+
+            <Pressable
+              onPress={handleDelete}
+              disabled={isDeleting}
+              style={[styles.deleteButton, isDeleting && styles.disabledButton]}
+            >
+              <ThemedText type="defaultSemiBold">
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </ThemedText>
+            </Pressable>
+          </View>
 
           <View style={styles.card}>
             <View style={styles.row}>
@@ -184,6 +243,10 @@ const styles = StyleSheet.create({
   section: {
     gap: 12,
   },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
   card: {
     padding: 16,
     borderRadius: 12,
@@ -206,10 +269,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#f2f2f2',
   },
   secondaryButton: {
+    flex: 1,
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: 'center',
+  },
+  deleteButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#d88',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
 });

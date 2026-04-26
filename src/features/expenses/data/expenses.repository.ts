@@ -91,7 +91,7 @@ export async function getExpenseStats(
 export async function createExpense(
   db: SQLiteDatabase,
   input: CreateExpenseInput
-): Promise<void> {
+): Promise<string> {
   const id = `${Date.now()}-${Math.round(Math.random() * 1_000_000)}`;
   const note = input.note?.trim() ? input.note.trim() : null;
   const createdAt = new Date().toISOString();
@@ -113,4 +113,45 @@ export async function createExpense(
     input.receiptName ?? null,
     input.receiptMimeType ?? null
   );
+
+  return id;
+}
+
+export async function updateExpense(
+  db: SQLiteDatabase,
+  id: string,
+  input: CreateExpenseInput
+): Promise<void> {
+  const note = input.note?.trim() ? input.note.trim() : null;
+
+  await db.runAsync(
+    `UPDATE expenses
+     SET merchant = ?,
+         amount = ?,
+         currency = ?,
+         date = ?,
+         category = ?,
+         note = ?,
+         receipt_uri = ?,
+         receipt_name = ?,
+         receipt_mime_type = ?
+     WHERE id = ?`,
+    input.merchant.trim(),
+    input.amount,
+    input.currency,
+    input.date,
+    input.category,
+    note,
+    input.receiptUri ?? null,
+    input.receiptName ?? null,
+    input.receiptMimeType ?? null,
+    id
+  );
+}
+
+export async function deleteExpense(
+  db: SQLiteDatabase,
+  id: string
+): Promise<void> {
+  await db.runAsync(`DELETE FROM expenses WHERE id = ?`, id);
 }
