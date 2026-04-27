@@ -1,18 +1,18 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { useState } from 'react';
 import {
-    Alert,
-    Pressable,
-    StyleSheet,
-    TextInput,
-    View,
+  Alert,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  View,
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import type {
-    CreateExpenseInput,
-    ExpenseAttachment,
-    ExpenseCategory,
+  CreateExpenseInput,
+  ExpenseAttachment,
+  ExpenseCategory,
 } from '../model/expense.types';
 import { EXPENSE_CATEGORIES } from '../model/expense.types';
 
@@ -41,6 +41,25 @@ const DEFAULT_INITIAL_VALUES: ExpenseFormInitialValues = {
   receipt: null,
 };
 
+function isValidExpenseDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const [yearString, monthString, dayString] = value.split('-');
+  const year = Number(yearString);
+  const month = Number(monthString);
+  const day = Number(dayString);
+
+  const candidate = new Date(year, month - 1, day);
+
+  return (
+    candidate.getFullYear() === year &&
+    candidate.getMonth() === month - 1 &&
+    candidate.getDate() === day
+  );
+}
+
 export function ExpenseForm({
   initialValues,
   submitLabel,
@@ -56,7 +75,7 @@ export function ExpenseForm({
   const [amount, setAmount] = useState(resolvedInitialValues.amount);
   const [note, setNote] = useState(resolvedInitialValues.note);
   const [category, setCategory] = useState<ExpenseCategory>(resolvedInitialValues.category);
-  const [date] = useState(resolvedInitialValues.date);
+  const [date, setDate] = useState(resolvedInitialValues.date);
   const [receipt, setReceipt] = useState<ExpenseAttachment | null>(
     resolvedInitialValues.receipt
   );
@@ -93,6 +112,7 @@ export function ExpenseForm({
   async function handleSubmit() {
     const trimmedMerchant = merchant.trim();
     const parsedAmount = Number(amount.replace(',', '.'));
+    const normalizedDate = date.trim();
 
     if (!trimmedMerchant) {
       Alert.alert('Missing merchant', 'Please enter a merchant.');
@@ -104,11 +124,19 @@ export function ExpenseForm({
       return;
     }
 
+    if (!isValidExpenseDate(normalizedDate)) {
+      Alert.alert(
+        'Invalid date',
+        'Please enter a valid date in the format YYYY-MM-DD.'
+      );
+      return;
+    }
+
     await onSubmit({
       merchant: trimmedMerchant,
       amount: parsedAmount,
       currency: 'EUR',
-      date,
+      date: normalizedDate,
       category,
       note,
       receiptUri: receipt?.uri,
@@ -138,6 +166,21 @@ export function ExpenseForm({
           keyboardType="decimal-pad"
           style={styles.input}
         />
+      </View>
+
+      <View style={styles.fieldGroup}>
+        <ThemedText type="defaultSemiBold">Date</ThemedText>
+        <TextInput
+          value={date}
+          onChangeText={setDate}
+          placeholder="YYYY-MM-DD"
+          autoCapitalize="none"
+          autoCorrect={false}
+          style={styles.input}
+        />
+        <ThemedText style={styles.helperText}>
+          Use the actual purchase/payment date.
+        </ThemedText>
       </View>
 
       <View style={styles.fieldGroup}>
@@ -222,6 +265,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: '#fff',
     color: '#111',
+  },
+  helperText: {
+    opacity: 0.7,
   },
   noteInput: {
     minHeight: 96,
