@@ -10,12 +10,20 @@ import { ExpenseList } from '../../expenses/components/ExpenseList';
 import { listExpenses } from '../../expenses/data/expenses.repository';
 import { buildExpenseDashboard } from '../../expenses/model/expense.analytics';
 import type { Expense } from '../../expenses/model/expense.types';
+import { listRecurringExpenses } from '../../recurring/data/recurring-expenses.repository';
+import {
+  formatStoredDateForDisplay,
+  getRecurringExpenseDateForCurrentMonth,
+  isRecurringExpenseDue,
+} from '../../recurring/model/recurring-expense.logic';
+import type { RecurringExpense } from '../../recurring/model/recurring-expense.types';
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useFocusEffect(
@@ -26,10 +34,14 @@ export default function HomeScreen() {
         setIsLoading(true);
 
         try {
-          const result = await listExpenses(db);
+          const [expenseResult, recurringResult] = await Promise.all([
+            listExpenses(db),
+            listRecurringExpenses(db),
+          ]);
 
           if (isActive) {
-            setExpenses(result);
+            setExpenses(expenseResult);
+            setRecurringExpenses(recurringResult);
           }
         } finally {
           if (isActive) {
@@ -38,7 +50,7 @@ export default function HomeScreen() {
         }
       }
 
-      loadData();
+      void loadData();
 
       return () => {
         isActive = false;
@@ -47,6 +59,11 @@ export default function HomeScreen() {
   );
 
   const dashboard = useMemo(() => buildExpenseDashboard(expenses), [expenses]);
+
+  const dueRecurringExpenses = useMemo(
+    () => recurringExpenses.filter((item) => isRecurringExpenseDue(item)),
+    [recurringExpenses]
+  );
 
   function handleExpensePress(expense: Expense) {
     router.push({
@@ -57,6 +74,10 @@ export default function HomeScreen() {
 
   function handleOpenExpenses() {
     router.navigate('/expenses');
+  }
+
+  function handleOpenRecurring() {
+    router.navigate('/recurring');
   }
 
   const formattedAllTimeTotal = new Intl.NumberFormat('de-DE', {
@@ -100,6 +121,40 @@ export default function HomeScreen() {
             <ThemedText type="defaultSemiBold">
               Expense count: {dashboard.currentMonthCount}
             </ThemedText>
+          </View>
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <ThemedText type="subtitle">Due recurring expenses</ThemedText>
+              <Pressable onPress={handleOpenRecurring} style={styles.linkButton}>
+                <ThemedText type="defaultSemiBold">Open recurring</ThemedText>
+              </Pressable>
+            </View>
+
+            {dueRecurringExpenses.length === 0 ? (
+              <ThemedText>No recurring expenses are due right now.</ThemedText>
+            ) : (
+              <View style={styles.list}>
+                {dueRecurringExpenses.map((item) => (
+                  <View key={item.id} style={styles.rowCard}>
+                    <ThemedText type="defaultSemiBold">{item.merchant}</ThemedText>
+                    <ThemedText>
+                      Due date:{' '}
+                      {formatStoredDateForDisplay(
+                        getRecurringExpenseDateForCurrentMonth(item)
+                      )}
+                    </ThemedText>
+                    <ThemedText>
+                      Amount:{' '}
+                      {new Intl.NumberFormat('de-DE', {
+                        style: 'currency',
+                        currency: item.currency,
+                      }).format(item.amount)}
+                    </ThemedText>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
 
           <View style={styles.section}>

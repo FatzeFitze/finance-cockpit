@@ -4,8 +4,12 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
+    "start:tunnel": "./scripts/start-expo-with-tunnel.sh",
+    "start:local": "expo start -c --localhost",
+    "start:lan": "expo start -c --lan",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
+    "android:reverse": "adb reverse tcp:8081 tcp:8081",
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint"
