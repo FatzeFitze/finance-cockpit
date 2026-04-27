@@ -1,5 +1,5 @@
 import * as DocumentPicker from 'expo-document-picker';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import type { Tag } from '../../tags/model/tag.types';
 import type {
   CreateExpenseInput,
   ExpenseAttachment,
@@ -23,13 +24,17 @@ type ExpenseFormInitialValues = {
   category: ExpenseCategory;
   date: string;
   receipt: ExpenseAttachment | null;
+  selectedTags: Tag[];
 };
 
 type ExpenseFormProps = {
   initialValues?: Partial<ExpenseFormInitialValues>;
+  availableTags: Tag[];
   submitLabel: string;
   isSubmitting?: boolean;
+  isCreatingTag?: boolean;
   onSubmit: (input: CreateExpenseInput) => Promise<void> | void;
+  onCreateTag: (name: string) => Promise<Tag>;
 };
 
 const DEFAULT_INITIAL_VALUES: ExpenseFormInitialValues = {
@@ -39,6 +44,7 @@ const DEFAULT_INITIAL_VALUES: ExpenseFormInitialValues = {
   category: 'Other',
   date: new Date().toISOString().slice(0, 10),
   receipt: null,
+  selectedTags: [],
 };
 
 function isValidExpenseDate(value: string): boolean {
@@ -62,9 +68,12 @@ function isValidExpenseDate(value: string): boolean {
 
 export function ExpenseForm({
   initialValues,
+  availableTags,
   submitLabel,
   isSubmitting = false,
+  isCreatingTag = false,
   onSubmit,
+  onCreateTag,
 }: ExpenseFormProps) {
   const resolvedInitialValues: ExpenseFormInitialValues = {
     ...DEFAULT_INITIAL_VALUES,
@@ -78,6 +87,15 @@ export function ExpenseForm({
   const [date, setDate] = useState(resolvedInitialValues.date);
   const [receipt, setReceipt] = useState<ExpenseAttachment | null>(
     resolvedInitialValues.receipt
+  );
+  const [selectedTags, setSelectedTags] = useState<Tag[]>(
+    resolvedInitialValues.selectedTags
+  );
+  const [newTagName, setNewTagName] = useState('');
+
+  const selectedTagIds = useMemo(
+    () => new Set(selectedTags.map((tag) => tag.id)),
+    [selectedTags]
   );
 
   async function handlePickReceipt() {
@@ -107,6 +125,44 @@ export function ExpenseForm({
 
   function handleRemoveReceipt() {
     setReceipt(null);
+  }
+
+  function handleToggleTag(tag: Tag) {
+    setSelectedTags((current) => {
+      const alreadySelected = current.some((item) => item.id === tag.id);
+
+      if (alreadySelected) {
+        return current.filter((item) => item.id !== tag.id);
+      }
+
+      return [...current, tag];
+    });
+  }
+
+  async function handleCreateTagPress() {
+    const trimmedTagName = newTagName.trim();
+
+    if (!trimmedTagName) {
+      Alert.alert('Missing tag name', 'Please enter a tag name.');
+      return;
+    }
+
+    try {
+      const createdTag = await onCreateTag(trimmedTagName);
+
+      setSelectedTags((current) => {
+        if (current.some((item) => item.id === createdTag.id)) {
+          return current;
+        }
+
+        return [...current, createdTag];
+      });
+
+      setNewTagName('');
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Tag creation failed', 'Could not create the tag.');
+    }
   }
 
   async function handleSubmit() {
@@ -142,6 +198,7 @@ export function ExpenseForm({
       receiptUri: receipt?.uri,
       receiptName: receipt?.name,
       receiptMimeType: receipt?.mimeType ?? null,
+      tagIds: selectedTags.map((tag) => tag.id),
     });
   }
 
@@ -203,6 +260,48 @@ export function ExpenseForm({
       </View>
 
       <View style={styles.fieldGroup}>
+        <ThemedText type="defaultSemiBold">Tags</ThemedText>
+
+        <View style={styles.inlineRow}>
+          <TextInput
+            value={newTagName}
+            onChangeText={setNewTagName}
+            placeholder="Create new tag"
+            style={[styles.input, styles.inlineInput]}
+          />
+          <Pressable
+            onPress={handleCreateTagPress}
+            disabled={isCreatingTag}
+            style={[styles.inlineButton, isCreatingTag && styles.disabledButton]}
+          >
+            <ThemedText type="defaultSemiBold">
+              {isCreatingTag ? 'Saving...' : 'Add'}
+            </ThemedText>
+          </Pressable>
+        </View>
+
+        {availableTags.length === 0 ? (
+          <ThemedText>No tags created yet.</ThemedText>
+        ) : (
+          <View style={styles.chips}>
+            {availableTags.map((tag) => {
+              const isSelected = selectedTagIds.has(tag.id);
+
+              return (
+                <Pressable
+                  key={tag.id}
+                  onPress={() => handleToggleTag(tag)}
+                  style={[styles.chip, isSelected && styles.chipSelected]}
+                >
+                  <ThemedText>{tag.name}</ThemedText>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+      </View>
+
+      <View style={styles.fieldGroup}>
         <ThemedText type="defaultSemiBold">Note</ThemedText>
         <TextInput
           value={note}
@@ -240,7 +339,7 @@ export function ExpenseForm({
       <Pressable
         onPress={handleSubmit}
         disabled={isSubmitting}
-        style={[styles.saveButton, isSubmitting && styles.saveButtonDisabled]}
+        style={[styles.saveButton, isSubmitting && styles.disabledButton]}
       >
         <ThemedText type="defaultSemiBold">
           {isSubmitting ? 'Saving...' : submitLabel}
@@ -268,6 +367,23 @@ const styles = StyleSheet.create({
   },
   helperText: {
     opacity: 0.7,
+  },
+  inlineRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  inlineInput: {
+    flex: 1,
+  },
+  inlineButton: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   noteInput: {
     minHeight: 96,
@@ -318,7 +434,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
-  saveButtonDisabled: {
+  disabledButton: {
     opacity: 0.6,
   },
 });

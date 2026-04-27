@@ -6,6 +6,8 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'reac
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { listTags } from '../../tags/data/tags.repository';
+import type { Tag } from '../../tags/model/tag.types';
 import { ExpenseList } from '../components/ExpenseList';
 import { listExpenses } from '../data/expenses.repository';
 import {
@@ -15,16 +17,19 @@ import {
   SORT_OPTIONS,
   type ExpenseCategoryFilter,
   type ExpenseFilterState,
+  type ExpenseTagFilter,
 } from '../model/expense.filters';
 import { EXPENSE_CATEGORIES, type Expense } from '../model/expense.types';
 
 const CATEGORY_OPTIONS: ExpenseCategoryFilter[] = ['All', ...EXPENSE_CATEGORIES];
+const TAG_ALL_OPTION: ExpenseTagFilter = 'All';
 
 export default function ExpensesScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [filters, setFilters] = useState<ExpenseFilterState>(DEFAULT_EXPENSE_FILTERS);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -32,13 +37,18 @@ export default function ExpensesScreen() {
     useCallback(() => {
       let isActive = true;
 
-      async function loadExpenses() {
+      async function loadExpensesAndTags() {
         setIsLoading(true);
 
         try {
-          const result = await listExpenses(db);
+          const [expenseResult, tagResult] = await Promise.all([
+            listExpenses(db),
+            listTags(db),
+          ]);
+
           if (isActive) {
-            setExpenses(result);
+            setExpenses(expenseResult);
+            setAvailableTags(tagResult);
           }
         } finally {
           if (isActive) {
@@ -47,7 +57,7 @@ export default function ExpensesScreen() {
         }
       }
 
-      loadExpenses();
+      void loadExpensesAndTags();
 
       return () => {
         isActive = false;
@@ -117,6 +127,35 @@ export default function ExpensesScreen() {
                     style={[styles.chip, isSelected && styles.chipSelected]}
                   >
                     <ThemedText>{item}</ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <ThemedText type="subtitle">Tag</ThemedText>
+            <View style={styles.chips}>
+              <Pressable
+                onPress={() => updateFilters({ tagId: TAG_ALL_OPTION })}
+                style={[
+                  styles.chip,
+                  filters.tagId === TAG_ALL_OPTION && styles.chipSelected,
+                ]}
+              >
+                <ThemedText>All tags</ThemedText>
+              </Pressable>
+
+              {availableTags.map((tag) => {
+                const isSelected = tag.id === filters.tagId;
+
+                return (
+                  <Pressable
+                    key={tag.id}
+                    onPress={() => updateFilters({ tagId: tag.id })}
+                    style={[styles.chip, isSelected && styles.chipSelected]}
+                  >
+                    <ThemedText>{tag.name}</ThemedText>
                   </Pressable>
                 );
               })}

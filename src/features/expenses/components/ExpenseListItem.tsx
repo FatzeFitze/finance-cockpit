@@ -15,6 +15,7 @@ export function ExpenseListItem({ expense, onPress }: ExpenseListItemProps) {
   }).format(expense.amount);
 
   const formattedDate = new Date(expense.date).toLocaleDateString();
+  const tagLabel = expense.tags.map((tag) => tag.name).join(', ');
 
   const content = (
     <View style={styles.card}>
@@ -28,10 +29,14 @@ export function ExpenseListItem({ expense, onPress }: ExpenseListItemProps) {
         <ThemedText>{formattedDate}</ThemedText>
       </View>
 
-      {expense.note ? <ThemedText style={styles.note}>{expense.note}</ThemedText> : null}
+      {expense.tags.length > 0 ? (
+        <ThemedText style={styles.secondaryText}>Tags: {tagLabel}</ThemedText>
+      ) : null}
+
+      {expense.note ? <ThemedText style={styles.secondaryText}>{expense.note}</ThemedText> : null}
 
       {expense.receiptName ? (
-        <ThemedText style={styles.attachment}>Receipt: {expense.receiptName}</ThemedText>
+        <ThemedText style={styles.secondaryText}>Receipt: {expense.receiptName}</ThemedText>
       ) : null}
     </View>
   );
@@ -56,10 +61,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
-  note: {
-    opacity: 0.75,
-  },
-  attachment: {
+  secondaryText: {
     opacity: 0.75,
   },
 });

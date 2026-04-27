@@ -5,6 +5,8 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-na
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { createTag, listTags } from '../../tags/data/tags.repository';
+import type { Tag } from '../../tags/model/tag.types';
 import { ExpenseForm } from '../components/ExpenseForm';
 import { getExpenseById, updateExpense } from '../data/expenses.repository';
 import type { CreateExpenseInput, Expense, ExpenseAttachment } from '../model/expense.types';
@@ -29,13 +31,15 @@ export default function EditExpenseScreen() {
   const expenseId = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [expense, setExpense] = useState<Expense | null>(null);
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCreatingTag, setIsCreatingTag] = useState(false);
 
   useEffect(() => {
     let isActive = true;
 
-    async function loadExpense() {
+    async function loadData() {
       if (!expenseId) {
         setExpense(null);
         setIsLoading(false);
@@ -45,10 +49,14 @@ export default function EditExpenseScreen() {
       setIsLoading(true);
 
       try {
-        const result = await getExpenseById(db, expenseId);
+        const [expenseResult, tagsResult] = await Promise.all([
+          getExpenseById(db, expenseId),
+          listTags(db),
+        ]);
 
         if (isActive) {
-          setExpense(result);
+          setExpense(expenseResult);
+          setAvailableTags(tagsResult);
         }
       } finally {
         if (isActive) {
@@ -57,12 +65,24 @@ export default function EditExpenseScreen() {
       }
     }
 
-    loadExpense();
+    void loadData();
 
     return () => {
       isActive = false;
     };
   }, [db, expenseId]);
+
+  async function handleCreateTag(tagName: string): Promise<Tag> {
+    try {
+      setIsCreatingTag(true);
+      const tag = await createTag(db, tagName);
+      const tagsResult = await listTags(db);
+      setAvailableTags(tagsResult);
+      return tag;
+    } finally {
+      setIsCreatingTag(false);
+    }
+  }
 
   async function handleSubmit(input: CreateExpenseInput) {
     if (!expenseId) {
@@ -106,8 +126,11 @@ export default function EditExpenseScreen() {
 
           <ExpenseForm
             key={expense.id}
+            availableTags={availableTags}
             submitLabel="Save changes"
             isSubmitting={isSaving}
+            isCreatingTag={isCreatingTag}
+            onCreateTag={handleCreateTag}
             onSubmit={handleSubmit}
             initialValues={{
               merchant: expense.merchant,
@@ -116,6 +139,7 @@ export default function EditExpenseScreen() {
               category: expense.category,
               date: expense.date,
               receipt: buildInitialReceipt(expense),
+              selectedTags: expense.tags,
             }}
           />
         </ScrollView>

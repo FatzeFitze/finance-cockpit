@@ -1,17 +1,20 @@
 import type { Expense, ExpenseCategory } from './expense.types';
 
 export type ExpenseCategoryFilter = ExpenseCategory | 'All';
+export type ExpenseTagFilter = string | 'All';
 export type ReceiptFilter = 'all' | 'with_receipt' | 'without_receipt';
 export type ExpenseSortOption = 'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc';
 
 export type ExpenseFilterState = {
   category: ExpenseCategoryFilter;
+  tagId: ExpenseTagFilter;
   receipt: ReceiptFilter;
   sort: ExpenseSortOption;
 };
 
 export const DEFAULT_EXPENSE_FILTERS: ExpenseFilterState = {
   category: 'All',
+  tagId: 'All',
   receipt: 'all',
   sort: 'date_desc',
 };
@@ -63,6 +66,9 @@ export function applyExpenseFilters(
     const matchesCategory =
       filters.category === 'All' || expense.category === filters.category;
 
+    const matchesTag =
+      filters.tagId === 'All' || expense.tags.some((tag) => tag.id === filters.tagId);
+
     const hasReceipt = !!expense.receiptUri;
 
     const matchesReceipt =
@@ -70,7 +76,7 @@ export function applyExpenseFilters(
       (filters.receipt === 'with_receipt' && hasReceipt) ||
       (filters.receipt === 'without_receipt' && !hasReceipt);
 
-    return matchesCategory && matchesReceipt;
+    return matchesCategory && matchesTag && matchesReceipt;
   });
 
   const sorted = [...filtered];

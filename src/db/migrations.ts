@@ -60,6 +60,27 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 4,
+    name: 'create tags and expense_tags tables',
+    up: async (db) => {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS tags (
+          id TEXT PRIMARY KEY NOT NULL,
+          name TEXT NOT NULL,
+          normalized_name TEXT NOT NULL UNIQUE,
+          created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS expense_tags (
+          expense_id TEXT NOT NULL,
+          tag_id TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          PRIMARY KEY (expense_id, tag_id)
+        );
+      `);
+    },
+  },
 ];
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {

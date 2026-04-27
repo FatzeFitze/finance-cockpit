@@ -189,6 +189,32 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.section}>
+            <ThemedText type="subtitle">Current month by tag</ThemedText>
+
+            {dashboard.tagBreakdown.length === 0 ? (
+              <ThemedText>No tag summary available yet.</ThemedText>
+            ) : (
+              <View style={styles.list}>
+                {dashboard.tagBreakdown.map((item) => {
+                  const formattedTotal = new Intl.NumberFormat('de-DE', {
+                    style: 'currency',
+                    currency: 'EUR',
+                  }).format(item.total);
+
+                  return (
+                    <View key={item.tagId} style={styles.rowCard}>
+                      <ThemedText type="defaultSemiBold">{item.tagName}</ThemedText>
+                      <ThemedText>
+                        {item.count} items · {formattedTotal}
+                      </ThemedText>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+
+          <View style={styles.section}>
             <ThemedText type="subtitle">Top merchants this month</ThemedText>
 
             {dashboard.topMerchants.length === 0 ? (

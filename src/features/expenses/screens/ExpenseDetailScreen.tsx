@@ -3,13 +3,13 @@ import * as Sharing from 'expo-sharing';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -53,7 +53,7 @@ export default function ExpenseDetailScreen() {
       }
     }
 
-    loadExpense();
+    void loadExpense();
 
     return () => {
       isActive = false;
@@ -133,6 +133,7 @@ export default function ExpenseDetailScreen() {
 
   const formattedDate = expense ? new Date(expense.date).toLocaleDateString() : '';
   const isImageReceipt = !!expense?.receiptMimeType?.startsWith('image/');
+  const tagLabel = expense?.tags.map((tag) => tag.name).join(', ') ?? '';
 
   return (
     <ThemedView style={styles.container}>
@@ -186,6 +187,11 @@ export default function ExpenseDetailScreen() {
             <View style={styles.row}>
               <ThemedText type="defaultSemiBold">Currency</ThemedText>
               <ThemedText>{expense.currency}</ThemedText>
+            </View>
+
+            <View style={styles.column}>
+              <ThemedText type="defaultSemiBold">Tags</ThemedText>
+              <ThemedText>{tagLabel || 'No tags'}</ThemedText>
             </View>
 
             <View style={styles.column}>

@@ -12,6 +12,13 @@ export type MerchantBreakdownItem = {
   total: number;
 };
 
+export type TagBreakdownItem = {
+  tagId: string;
+  tagName: string;
+  count: number;
+  total: number;
+};
+
 export type ExpenseDashboard = {
   allTimeCount: number;
   allTimeTotal: number;
@@ -21,6 +28,7 @@ export type ExpenseDashboard = {
   recentExpenses: Expense[];
   categoryBreakdown: CategoryBreakdownItem[];
   topMerchants: MerchantBreakdownItem[];
+  tagBreakdown: TagBreakdownItem[];
 };
 
 function getCurrentMonthKey(baseDate: Date = new Date()): string {
@@ -75,6 +83,23 @@ export function buildExpenseDashboard(expenses: Expense[]): ExpenseDashboard {
     merchantMap.set(expense.merchant, existing);
   }
 
+  const tagMap = new Map<string, TagBreakdownItem>();
+  for (const expense of currentMonthExpenses) {
+    for (const tag of expense.tags) {
+      const existing = tagMap.get(tag.id) ?? {
+        tagId: tag.id,
+        tagName: tag.name,
+        count: 0,
+        total: 0,
+      };
+
+      existing.count += 1;
+      existing.total += expense.amount;
+
+      tagMap.set(tag.id, existing);
+    }
+  }
+
   return {
     allTimeCount: expenses.length,
     allTimeTotal: expenses.reduce((sum, expense) => sum + expense.amount, 0),
@@ -91,5 +116,6 @@ export function buildExpenseDashboard(expenses: Expense[]): ExpenseDashboard {
     topMerchants: Array.from(merchantMap.values())
       .sort((a, b) => b.total - a.total)
       .slice(0, 5),
+    tagBreakdown: Array.from(tagMap.values()).sort((a, b) => b.total - a.total),
   };
 }

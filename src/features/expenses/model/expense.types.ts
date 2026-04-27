@@ -1,3 +1,5 @@
+import type { Tag } from '../../tags/model/tag.types';
+
 export const EXPENSE_CATEGORIES = [
   'Food',
   'Transport',
@@ -28,6 +30,7 @@ export type Expense = {
   receiptUri?: string | null;
   receiptName?: string | null;
   receiptMimeType?: string | null;
+  tags: Tag[];
 };
 
 export type CreateExpenseInput = {
@@ -40,4 +43,5 @@ export type CreateExpenseInput = {
   receiptUri?: string;
   receiptName?: string;
   receiptMimeType?: string | null;
+  tagIds?: string[];
 };

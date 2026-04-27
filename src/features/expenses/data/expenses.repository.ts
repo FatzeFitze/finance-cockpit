@@ -1,5 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import type { Tag } from '../../tags/model/tag.types';
 import type { CreateExpenseInput, Expense, ExpenseCategory } from '../model/expense.types';
 
 type ExpenseRow = {
@@ -16,7 +17,13 @@ type ExpenseRow = {
   receipt_mime_type: string | null;
 };
 
-function mapRowToExpense(row: ExpenseRow): Expense {
+type ExpenseTagRow = {
+  expense_id: string;
+  tag_id: string;
+  tag_name: string;
+};
+
+function mapRowToExpense(row: ExpenseRow, tags: Tag[]): Expense {
   return {
     id: row.id,
     merchant: row.merchant,
@@ -29,7 +36,70 @@ function mapRowToExpense(row: ExpenseRow): Expense {
     receiptUri: row.receipt_uri,
     receiptName: row.receipt_name,
     receiptMimeType: row.receipt_mime_type,
+    tags,
   };
+}
+
+async function loadTagsByExpenseId(
+  db: SQLiteDatabase,
+  expenseIds: string[]
+): Promise<Map<string, Tag[]>> {
+  const result = new Map<string, Tag[]>();
+
+  if (expenseIds.length === 0) {
+    return result;
+  }
+
+  const placeholders = expenseIds.map(() => '?').join(', ');
+
+  const rows = await db.getAllAsync<ExpenseTagRow>(
+    `SELECT et.expense_id, t.id as tag_id, t.name as tag_name
+     FROM expense_tags et
+     JOIN tags t ON t.id = et.tag_id
+     WHERE et.expense_id IN (${placeholders})
+     ORDER BY t.name COLLATE NOCASE ASC`,
+    ...expenseIds
+  );
+
+  for (const row of rows) {
+    const current = result.get(row.expense_id) ?? [];
+    current.push({
+      id: row.tag_id,
+      name: row.tag_name,
+    });
+    result.set(row.expense_id, current);
+  }
+
+  return result;
+}
+
+async function syncExpenseTags(
+  db: SQLiteDatabase,
+  expenseId: string,
+  tagIds: string[]
+): Promise<void> {
+  const uniqueTagIds = Array.from(new Set(tagIds));
+
+  await db.execAsync('BEGIN');
+
+  try {
+    await db.runAsync(`DELETE FROM expense_tags WHERE expense_id = ?`, expenseId);
+
+    for (const tagId of uniqueTagIds) {
+      await db.runAsync(
+        `INSERT INTO expense_tags (expense_id, tag_id, created_at)
+         VALUES (?, ?, ?)`,
+        expenseId,
+        tagId,
+        new Date().toISOString()
+      );
+    }
+
+    await db.execAsync('COMMIT');
+  } catch (error) {
+    await db.execAsync('ROLLBACK');
+    throw error;
+  }
 }
 
 export async function listExpenses(db: SQLiteDatabase): Promise<Expense[]> {
@@ -40,7 +110,12 @@ export async function listExpenses(db: SQLiteDatabase): Promise<Expense[]> {
      ORDER BY date DESC, created_at DESC`
   );
 
-  return rows.map(mapRowToExpense);
+  const tagsByExpenseId = await loadTagsByExpenseId(
+    db,
+    rows.map((row) => row.id)
+  );
+
+  return rows.map((row) => mapRowToExpense(row, tagsByExpenseId.get(row.id) ?? []));
 }
 
 export async function getRecentExpenses(
@@ -56,7 +131,12 @@ export async function getRecentExpenses(
     limit
   );
 
-  return rows.map(mapRowToExpense);
+  const tagsByExpenseId = await loadTagsByExpenseId(
+    db,
+    rows.map((row) => row.id)
+  );
+
+  return rows.map((row) => mapRowToExpense(row, tagsByExpenseId.get(row.id) ?? []));
 }
 
 export async function getExpenseById(
@@ -71,7 +151,13 @@ export async function getExpenseById(
     id
   );
 
-  return row ? mapRowToExpense(row) : null;
+  if (!row) {
+    return null;
+  }
+
+  const tagsByExpenseId = await loadTagsByExpenseId(db, [id]);
+
+  return mapRowToExpense(row, tagsByExpenseId.get(id) ?? []);
 }
 
 export async function getExpenseStats(
@@ -114,6 +200,8 @@ export async function createExpense(
     input.receiptMimeType ?? null
   );
 
+  await syncExpenseTags(db, id, input.tagIds ?? []);
+
   return id;
 }
 
@@ -147,11 +235,22 @@ export async function updateExpense(
     input.receiptMimeType ?? null,
     id
   );
+
+  await syncExpenseTags(db, id, input.tagIds ?? []);
 }
 
 export async function deleteExpense(
   db: SQLiteDatabase,
   id: string
 ): Promise<void> {
-  await db.runAsync(`DELETE FROM expenses WHERE id = ?`, id);
+  await db.execAsync('BEGIN');
+
+  try {
+    await db.runAsync(`DELETE FROM expense_tags WHERE expense_id = ?`, id);
+    await db.runAsync(`DELETE FROM expenses WHERE id = ?`, id);
+    await db.execAsync('COMMIT');
+  } catch (error) {
+    await db.execAsync('ROLLBACK');
+    throw error;
+  }
 }
