@@ -6,6 +6,10 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'reac
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import {
+  CategorySpendingChart,
+  MonthlySpendingChart,
+} from '../../expenses/components/DashboardCharts';
 import { ExpenseList } from '../../expenses/components/ExpenseList';
 import { listExpenses } from '../../expenses/data/expenses.repository';
 import { buildExpenseDashboard } from '../../expenses/model/expense.analytics';
@@ -123,6 +127,8 @@ export default function HomeScreen() {
             </ThemedText>
           </View>
 
+          <MonthlySpendingChart data={dashboard.monthlyTrend} />
+
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <ThemedText type="subtitle">Due recurring expenses</ThemedText>
@@ -169,6 +175,8 @@ export default function HomeScreen() {
               <ThemedText>No expenses recorded for this month yet.</ThemedText>
             ) : (
               <View style={styles.list}>
+                <CategorySpendingChart data={dashboard.categoryBreakdown} />
+
                 {dashboard.categoryBreakdown.map((item) => {
                   const formattedTotal = new Intl.NumberFormat('de-DE', {
                     style: 'currency',
@@ -179,7 +187,8 @@ export default function HomeScreen() {
                     <View key={item.category} style={styles.rowCard}>
                       <ThemedText type="defaultSemiBold">{item.category}</ThemedText>
                       <ThemedText>
-                        {item.count} items · {formattedTotal}
+                        {item.count} items · {formattedTotal} ·{' '}
+                        {Math.round(item.percentage)}%
                       </ThemedText>
                     </View>
                   );
