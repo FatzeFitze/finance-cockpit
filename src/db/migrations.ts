@@ -81,6 +81,29 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 5,
+    name: 'create investment candidates table',
+    up: async (db) => {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS investment_candidates (
+          id TEXT PRIMARY KEY NOT NULL,
+          name TEXT NOT NULL,
+          symbol TEXT,
+          asset_type TEXT NOT NULL,
+          status TEXT NOT NULL,
+          conviction TEXT NOT NULL,
+          currency TEXT NOT NULL,
+          target_buy_price REAL,
+          reference_price REAL,
+          thesis TEXT,
+          risk_notes TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+      `);
+    },
+  },
 ];
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
