@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'reac
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { UI_COLORS } from '@/src/constants/ui';
 import { listTags } from '../../tags/data/tags.repository';
 import type { Tag } from '../../tags/model/tag.types';
 import { ExpenseList } from '../components/ExpenseList';
@@ -126,7 +127,9 @@ export default function ExpensesScreen() {
                     onPress={() => updateFilters({ category: item })}
                     style={[styles.chip, isSelected && styles.chipSelected]}
                   >
-                    <ThemedText>{item}</ThemedText>
+                    <ThemedText style={isSelected && styles.chipTextSelected}>
+                      {item}
+                    </ThemedText>
                   </Pressable>
                 );
               })}
@@ -155,7 +158,9 @@ export default function ExpensesScreen() {
                     onPress={() => updateFilters({ tagId: tag.id })}
                     style={[styles.chip, isSelected && styles.chipSelected]}
                   >
-                    <ThemedText>{tag.name}</ThemedText>
+                    <ThemedText style={isSelected && styles.chipTextSelected}>
+                      {tag.name}
+                    </ThemedText>
                   </Pressable>
                 );
               })}
@@ -174,7 +179,9 @@ export default function ExpensesScreen() {
                     onPress={() => updateFilters({ receipt: option.value })}
                     style={[styles.chip, isSelected && styles.chipSelected]}
                   >
-                    <ThemedText>{option.label}</ThemedText>
+                    <ThemedText style={isSelected && styles.chipTextSelected}>
+                      {option.label}
+                    </ThemedText>
                   </Pressable>
                 );
               })}
@@ -193,7 +200,9 @@ export default function ExpensesScreen() {
                     onPress={() => updateFilters({ sort: option.value })}
                     style={[styles.chip, isSelected && styles.chipSelected]}
                   >
-                    <ThemedText>{option.label}</ThemedText>
+                    <ThemedText style={isSelected && styles.chipTextSelected}>
+                      {option.label}
+                    </ThemedText>
                   </Pressable>
                 );
               })}
@@ -252,5 +261,8 @@ const styles = StyleSheet.create({
   },
   chipSelected: {
     backgroundColor: '#e7f0ff',
+  },
+  chipTextSelected: {
+    color: UI_COLORS.selectedChipText,
   },
 });

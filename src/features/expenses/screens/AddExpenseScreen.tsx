@@ -1,10 +1,11 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
-import { Alert, ScrollView, StyleSheet } from 'react-native';
+import { Alert, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { KeyboardAwareScrollView } from '@/src/components/keyboard-aware-scroll-view';
 import { createTag, listTags } from '../../tags/data/tags.repository';
 import type { Tag } from '../../tags/model/tag.types';
 import { ExpenseForm } from '../components/ExpenseForm';
@@ -58,7 +59,7 @@ export default function AddExpenseScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.content}>
         <ThemedText type="title">Add Expense</ThemedText>
         <ThemedText>Manual entry for the PoC.</ThemedText>
 
@@ -70,7 +71,7 @@ export default function AddExpenseScreen() {
           onCreateTag={handleCreateTag}
           onSubmit={handleSubmit}
         />
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </ThemedView>
   );
 }

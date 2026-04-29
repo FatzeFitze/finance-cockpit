@@ -1,23 +1,24 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { KeyboardAwareScrollView } from '@/src/components/keyboard-aware-scroll-view';
 import { RecurringExpenseForm } from '../components/RecurringExpenseForm';
 import { RecurringExpenseListItem } from '../components/RecurringExpenseListItem';
 import {
-    createRecurringExpense,
-    deleteRecurringExpense,
-    generateExpenseFromRecurring,
-    listRecurringExpenses,
-    setRecurringExpenseActive,
+  createRecurringExpense,
+  deleteRecurringExpense,
+  generateExpenseFromRecurring,
+  listRecurringExpenses,
+  setRecurringExpenseActive,
 } from '../data/recurring-expenses.repository';
 import { isRecurringExpenseDue } from '../model/recurring-expense.logic';
 import type {
-    CreateRecurringExpenseInput,
-    RecurringExpense,
+  CreateRecurringExpenseInput,
+  RecurringExpense,
 } from '../model/recurring-expense.types';
 
 export default function RecurringExpensesScreen() {
@@ -113,7 +114,7 @@ export default function RecurringExpensesScreen() {
           <ActivityIndicator />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content}>
+        <KeyboardAwareScrollView contentContainerStyle={styles.content}>
           <ThemedText type="title">Recurring</ThemedText>
           <ThemedText>
             Create monthly templates for rent, insurance, subscriptions, and other
@@ -157,7 +158,7 @@ export default function RecurringExpensesScreen() {
               </View>
             )}
           </View>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       )}
     </ThemedView>
   );

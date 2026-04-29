@@ -1,10 +1,11 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { KeyboardAwareScrollView } from '@/src/components/keyboard-aware-scroll-view';
 import { createTag, listTags } from '../../tags/data/tags.repository';
 import type { Tag } from '../../tags/model/tag.types';
 import { ExpenseForm } from '../components/ExpenseForm';
@@ -120,7 +121,7 @@ export default function EditExpenseScreen() {
           <ThemedText>The requested expense could not be loaded.</ThemedText>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content}>
+        <KeyboardAwareScrollView contentContainerStyle={styles.content}>
           <ThemedText type="title">Edit Expense</ThemedText>
           <ThemedText>Update the saved values below.</ThemedText>
 
@@ -142,7 +143,7 @@ export default function EditExpenseScreen() {
               selectedTags: expense.tags,
             }}
           />
-        </ScrollView>
+        </KeyboardAwareScrollView>
       )}
     </ThemedView>
   );

@@ -1,18 +1,19 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { KeyboardAwareScrollView } from '@/src/components/keyboard-aware-scroll-view';
 import { InvestmentForm } from '../components/InvestmentForm';
 import {
-    getInvestmentCandidateById,
-    updateInvestmentCandidate,
+  getInvestmentCandidateById,
+  updateInvestmentCandidate,
 } from '../data/investments.repository';
 import type {
-    CreateInvestmentCandidateInput,
-    InvestmentCandidate,
+  CreateInvestmentCandidateInput,
+  InvestmentCandidate,
 } from '../model/investment.types';
 
 function formatInitialNumber(value: number | null | undefined): string {
@@ -100,7 +101,7 @@ export default function EditInvestmentScreen() {
           <ThemedText>The requested investment candidate could not be loaded.</ThemedText>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content}>
+        <KeyboardAwareScrollView contentContainerStyle={styles.content}>
           <ThemedText type="title">Edit Investment</ThemedText>
           <ThemedText>Update your watchlist candidate below.</ThemedText>
 
@@ -122,7 +123,7 @@ export default function EditInvestmentScreen() {
               riskNotes: investment.riskNotes ?? '',
             }}
           />
-        </ScrollView>
+        </KeyboardAwareScrollView>
       )}
     </ThemedView>
   );

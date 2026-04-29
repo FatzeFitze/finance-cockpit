@@ -1,19 +1,20 @@
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { AppTextInput } from '@/src/components/app-text-input';
 import type {
-    CreateInvestmentCandidateInput,
-    InvestmentAssetType,
-    InvestmentConviction,
-    InvestmentCurrency,
-    InvestmentStatus,
+  CreateInvestmentCandidateInput,
+  InvestmentAssetType,
+  InvestmentConviction,
+  InvestmentCurrency,
+  InvestmentStatus,
 } from '../model/investment.types';
 import {
-    INVESTMENT_ASSET_TYPES,
-    INVESTMENT_CONVICTIONS,
-    INVESTMENT_CURRENCIES,
-    INVESTMENT_STATUSES,
+  INVESTMENT_ASSET_TYPES,
+  INVESTMENT_CONVICTIONS,
+  INVESTMENT_CURRENCIES,
+  INVESTMENT_STATUSES,
 } from '../model/investment.types';
 
 type InvestmentFormInitialValues = {
@@ -137,128 +138,148 @@ export function InvestmentForm({
     <View style={styles.form}>
       <View style={styles.fieldGroup}>
         <ThemedText type="defaultSemiBold">Name</ThemedText>
-        <TextInput
+        <AppTextInput
           value={name}
           onChangeText={setName}
           placeholder="e.g. Microsoft"
-          style={styles.input}
         />
       </View>
 
       <View style={styles.fieldGroup}>
         <ThemedText type="defaultSemiBold">Ticker / symbol</ThemedText>
-        <TextInput
+        <AppTextInput
           value={symbol}
           onChangeText={setSymbol}
           placeholder="e.g. MSFT"
           autoCapitalize="characters"
-          style={styles.input}
         />
       </View>
 
       <View style={styles.fieldGroup}>
         <ThemedText type="defaultSemiBold">Asset type</ThemedText>
         <View style={styles.chips}>
-          {INVESTMENT_ASSET_TYPES.map((item) => (
-            <Pressable
-              key={item}
-              onPress={() => setAssetType(item)}
-              style={[styles.chip, assetType === item && styles.chipSelected]}
-            >
-              <ThemedText>{item}</ThemedText>
-            </Pressable>
-          ))}
+          {INVESTMENT_ASSET_TYPES.map((item) => {
+            const isSelected = assetType === item;
+
+            return (
+              <Pressable
+                key={item}
+                onPress={() => setAssetType(item)}
+                style={[styles.chip, isSelected && styles.chipSelected]}
+              >
+                <ThemedText style={isSelected && styles.chipTextSelected}>
+                  {item}
+                </ThemedText>
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
       <View style={styles.fieldGroup}>
         <ThemedText type="defaultSemiBold">Status</ThemedText>
         <View style={styles.chips}>
-          {INVESTMENT_STATUSES.map((item) => (
-            <Pressable
-              key={item}
-              onPress={() => setStatus(item)}
-              style={[styles.chip, status === item && styles.chipSelected]}
-            >
-              <ThemedText>{item}</ThemedText>
-            </Pressable>
-          ))}
+          {INVESTMENT_STATUSES.map((item) => {
+            const isSelected = status === item;
+
+            return (
+              <Pressable
+                key={item}
+                onPress={() => setStatus(item)}
+                style={[styles.chip, isSelected && styles.chipSelected]}
+              >
+                <ThemedText style={isSelected && styles.chipTextSelected}>
+                  {item}
+                </ThemedText>
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
       <View style={styles.fieldGroup}>
         <ThemedText type="defaultSemiBold">Conviction</ThemedText>
         <View style={styles.chips}>
-          {INVESTMENT_CONVICTIONS.map((item) => (
-            <Pressable
-              key={item}
-              onPress={() => setConviction(item)}
-              style={[styles.chip, conviction === item && styles.chipSelected]}
-            >
-              <ThemedText>{item}</ThemedText>
-            </Pressable>
-          ))}
+          {INVESTMENT_CONVICTIONS.map((item) => {
+            const isSelected = conviction === item;
+
+            return (
+              <Pressable
+                key={item}
+                onPress={() => setConviction(item)}
+                style={[styles.chip, isSelected && styles.chipSelected]}
+              >
+                <ThemedText style={isSelected && styles.chipTextSelected}>
+                  {item}
+                </ThemedText>
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
       <View style={styles.fieldGroup}>
         <ThemedText type="defaultSemiBold">Currency</ThemedText>
         <View style={styles.chips}>
-          {INVESTMENT_CURRENCIES.map((item) => (
-            <Pressable
-              key={item}
-              onPress={() => setCurrency(item)}
-              style={[styles.chip, currency === item && styles.chipSelected]}
-            >
-              <ThemedText>{item}</ThemedText>
-            </Pressable>
-          ))}
+          {INVESTMENT_CURRENCIES.map((item) => {
+            const isSelected = currency === item;
+
+            return (
+              <Pressable
+                key={item}
+                onPress={() => setCurrency(item)}
+                style={[styles.chip, isSelected && styles.chipSelected]}
+              >
+                <ThemedText style={isSelected && styles.chipTextSelected}>
+                  {item}
+                </ThemedText>
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
       <View style={styles.fieldGroup}>
         <ThemedText type="defaultSemiBold">Target buy price</ThemedText>
-        <TextInput
+        <AppTextInput
           value={targetBuyPrice}
           onChangeText={setTargetBuyPrice}
           placeholder="Optional"
           keyboardType="decimal-pad"
-          style={styles.input}
         />
       </View>
 
       <View style={styles.fieldGroup}>
         <ThemedText type="defaultSemiBold">Manual reference price</ThemedText>
-        <TextInput
+        <AppTextInput
           value={referencePrice}
           onChangeText={setReferencePrice}
           placeholder="Optional"
           keyboardType="decimal-pad"
-          style={styles.input}
         />
       </View>
 
       <View style={styles.fieldGroup}>
         <ThemedText type="defaultSemiBold">Investment thesis</ThemedText>
-        <TextInput
+        <AppTextInput
           value={thesis}
           onChangeText={setThesis}
           placeholder="Why is this interesting?"
           multiline
           textAlignVertical="top"
-          style={[styles.input, styles.multilineInput]}
+          style={styles.multilineInput}
         />
       </View>
 
       <View style={styles.fieldGroup}>
         <ThemedText type="defaultSemiBold">Risk notes</ThemedText>
-        <TextInput
+        <AppTextInput
           value={riskNotes}
           onChangeText={setRiskNotes}
           placeholder="What could go wrong?"
           multiline
           textAlignVertical="top"
-          style={[styles.input, styles.multilineInput]}
+          style={styles.multilineInput}
         />
       </View>
 
@@ -290,6 +311,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 16,
     backgroundColor: '#fff',
+    color: '#111',
   },
   multilineInput: {
     minHeight: 110,
@@ -308,6 +330,10 @@ const styles = StyleSheet.create({
   },
   chipSelected: {
     backgroundColor: '#e7f0ff',
+    borderColor: '#9bbcff',
+  },
+  chipTextSelected: {
+    color: '#111',
   },
   submitButton: {
     borderWidth: 1,

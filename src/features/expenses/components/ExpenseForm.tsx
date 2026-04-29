@@ -1,14 +1,10 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { useMemo, useState } from 'react';
-import {
-  Alert,
-  Pressable,
-  StyleSheet,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { AppTextInput } from '@/src/components/app-text-input';
+import { UI_COLORS, UI_RADIUS } from '@/src/constants/ui';
 import type { Tag } from '../../tags/model/tag.types';
 import type {
   CreateExpenseInput,
@@ -83,7 +79,9 @@ export function ExpenseForm({
   const [merchant, setMerchant] = useState(resolvedInitialValues.merchant);
   const [amount, setAmount] = useState(resolvedInitialValues.amount);
   const [note, setNote] = useState(resolvedInitialValues.note);
-  const [category, setCategory] = useState<ExpenseCategory>(resolvedInitialValues.category);
+  const [category, setCategory] = useState<ExpenseCategory>(
+    resolvedInitialValues.category
+  );
   const [date, setDate] = useState(resolvedInitialValues.date);
   const [receipt, setReceipt] = useState<ExpenseAttachment | null>(
     resolvedInitialValues.receipt
@@ -206,34 +204,31 @@ export function ExpenseForm({
     <View style={styles.form}>
       <View style={styles.fieldGroup}>
         <ThemedText type="defaultSemiBold">Merchant</ThemedText>
-        <TextInput
+        <AppTextInput
           value={merchant}
           onChangeText={setMerchant}
           placeholder="e.g. Lidl"
-          style={styles.input}
         />
       </View>
 
       <View style={styles.fieldGroup}>
         <ThemedText type="defaultSemiBold">Amount (EUR)</ThemedText>
-        <TextInput
+        <AppTextInput
           value={amount}
           onChangeText={setAmount}
           placeholder="e.g. 42.35"
           keyboardType="decimal-pad"
-          style={styles.input}
         />
       </View>
 
       <View style={styles.fieldGroup}>
         <ThemedText type="defaultSemiBold">Date</ThemedText>
-        <TextInput
+        <AppTextInput
           value={date}
           onChangeText={setDate}
           placeholder="YYYY-MM-DD"
           autoCapitalize="none"
           autoCorrect={false}
-          style={styles.input}
         />
         <ThemedText style={styles.helperText}>
           Use the actual purchase/payment date.
@@ -252,7 +247,9 @@ export function ExpenseForm({
                 onPress={() => setCategory(item)}
                 style={[styles.chip, isSelected && styles.chipSelected]}
               >
-                <ThemedText>{item}</ThemedText>
+                <ThemedText style={isSelected && styles.chipTextSelected}>
+                  {item}
+                </ThemedText>
               </Pressable>
             );
           })}
@@ -263,11 +260,11 @@ export function ExpenseForm({
         <ThemedText type="defaultSemiBold">Tags</ThemedText>
 
         <View style={styles.inlineRow}>
-          <TextInput
+          <AppTextInput
             value={newTagName}
             onChangeText={setNewTagName}
             placeholder="Create new tag"
-            style={[styles.input, styles.inlineInput]}
+            style={styles.inlineInput}
           />
           <Pressable
             onPress={handleCreateTagPress}
@@ -293,7 +290,9 @@ export function ExpenseForm({
                   onPress={() => handleToggleTag(tag)}
                   style={[styles.chip, isSelected && styles.chipSelected]}
                 >
-                  <ThemedText>{tag.name}</ThemedText>
+                  <ThemedText style={isSelected && styles.chipTextSelected}>
+                    {tag.name}
+                  </ThemedText>
                 </Pressable>
               );
             })}
@@ -303,12 +302,13 @@ export function ExpenseForm({
 
       <View style={styles.fieldGroup}>
         <ThemedText type="defaultSemiBold">Note</ThemedText>
-        <TextInput
+        <AppTextInput
           value={note}
           onChangeText={setNote}
           placeholder="Optional note"
           multiline
-          style={[styles.input, styles.noteInput]}
+          textAlignVertical="top"
+          style={styles.noteInput}
         />
       </View>
 
@@ -358,12 +358,12 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 12,
+    borderColor: UI_COLORS.border,
+    borderRadius: UI_RADIUS.card,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#fff',
-    color: '#111',
+    backgroundColor: UI_COLORS.inputBackground,
+    color: UI_COLORS.inputText,
   },
   helperText: {
     opacity: 0.7,
@@ -378,8 +378,8 @@ const styles = StyleSheet.create({
   },
   inlineButton: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 12,
+    borderColor: UI_COLORS.border,
+    borderRadius: UI_RADIUS.card,
     paddingHorizontal: 14,
     paddingVertical: 12,
     alignItems: 'center',
@@ -387,7 +387,6 @@ const styles = StyleSheet.create({
   },
   noteInput: {
     minHeight: 96,
-    textAlignVertical: 'top',
   },
   chips: {
     flexDirection: 'row',
@@ -396,41 +395,45 @@ const styles = StyleSheet.create({
   },
   chip: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 999,
+    borderColor: UI_COLORS.border,
+    borderRadius: UI_RADIUS.chip,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   chipSelected: {
-    backgroundColor: '#e7f0ff',
+    backgroundColor: UI_COLORS.selectedChipBackground,
+    borderColor: UI_COLORS.selectedChipBorder,
+  },
+  chipTextSelected: {
+    color: UI_COLORS.selectedChipText,
   },
   secondaryButton: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 12,
+    borderColor: UI_COLORS.border,
+    borderRadius: UI_RADIUS.card,
     paddingVertical: 12,
     alignItems: 'center',
   },
   attachmentCard: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 12,
+    borderColor: UI_COLORS.border,
+    borderRadius: UI_RADIUS.card,
     padding: 12,
     gap: 6,
   },
   removeButton: {
     alignSelf: 'flex-start',
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 10,
+    borderColor: UI_COLORS.border,
+    borderRadius: UI_RADIUS.smallButton,
     paddingHorizontal: 10,
     paddingVertical: 8,
     marginTop: 4,
   },
   saveButton: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 12,
+    borderColor: UI_COLORS.border,
+    borderRadius: UI_RADIUS.card,
     paddingVertical: 14,
     alignItems: 'center',
   },

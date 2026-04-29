@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { AppTextInput } from '@/src/components/app-text-input';
+import { UI_COLORS } from '@/src/constants/ui';
 import {
-    EXPENSE_CATEGORIES,
-    type ExpenseCategory,
+  EXPENSE_CATEGORIES,
+  type ExpenseCategory,
 } from '../../expenses/model/expense.types';
 import type { CreateRecurringExpenseInput } from '../model/recurring-expense.types';
 
@@ -70,33 +72,30 @@ export function RecurringExpenseForm({
     <View style={styles.form}>
       <View style={styles.fieldGroup}>
         <ThemedText type="defaultSemiBold">Merchant</ThemedText>
-        <TextInput
+        <AppTextInput
           value={merchant}
           onChangeText={setMerchant}
           placeholder="e.g. Landlord"
-          style={styles.input}
         />
       </View>
 
       <View style={styles.fieldGroup}>
         <ThemedText type="defaultSemiBold">Amount (EUR)</ThemedText>
-        <TextInput
+        <AppTextInput
           value={amount}
           onChangeText={setAmount}
           placeholder="e.g. 850.00"
           keyboardType="decimal-pad"
-          style={styles.input}
         />
       </View>
 
       <View style={styles.fieldGroup}>
         <ThemedText type="defaultSemiBold">Day of month</ThemedText>
-        <TextInput
+        <AppTextInput
           value={dayOfMonth}
           onChangeText={setDayOfMonth}
           placeholder="1-28"
           keyboardType="number-pad"
-          style={styles.input}
         />
         <ThemedText style={styles.helperText}>
           This simple PoC version supports monthly templates on days 1–28.
@@ -115,7 +114,9 @@ export function RecurringExpenseForm({
                 onPress={() => setCategory(item)}
                 style={[styles.chip, isSelected && styles.chipSelected]}
               >
-                <ThemedText>{item}</ThemedText>
+                <ThemedText style={isSelected && styles.chipTextSelected}>
+                  {item}
+                </ThemedText>
               </Pressable>
             );
           })}
@@ -124,12 +125,12 @@ export function RecurringExpenseForm({
 
       <View style={styles.fieldGroup}>
         <ThemedText type="defaultSemiBold">Note</ThemedText>
-        <TextInput
+        <AppTextInput
           value={note}
           onChangeText={setNote}
           placeholder="Optional note"
           multiline
-          style={[styles.input, styles.noteInput]}
+          style={styles.noteInput}
         />
       </View>
 
@@ -183,6 +184,9 @@ const styles = StyleSheet.create({
   },
   chipSelected: {
     backgroundColor: '#e7f0ff',
+  },
+  chipTextSelected: {
+    color: UI_COLORS.selectedChipText,
   },
   saveButton: {
     borderWidth: 1,
