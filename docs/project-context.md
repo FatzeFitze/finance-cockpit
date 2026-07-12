@@ -20,7 +20,7 @@ Finance Cockpit is a private, mobile-first personal-finance hub intended for gen
 
 - Begin with watchlists and pre-buy decision support.
 - Support candidate tracking, notes, research context, and structured reasoning.
-- Wealth tracking includes one overall portfolio, lightweight broker accounts, assets, a transaction ledger, calculated positions and cash, prices, snapshots, allocation, performance, and reviewed canonical CSV import/export.
+- Wealth tracking currently presents one fixed Personal Portfolio with lightweight broker accounts, assets, a transaction ledger, calculated positions and cash, prices, snapshots, allocation, performance, and reviewed canonical CSV import/export.
 - Build the wealth experience incrementally and manual-first; canonical transaction CSV imports are staged, validated, reviewed, and atomically committed only after the internal model and calculations are trustworthy.
 - Do not start with direct broker integrations or automated investment decisions.
 
@@ -78,6 +78,7 @@ This section describes observed state, not a completeness or quality assessment.
 - Expo + React Native + TypeScript.
 - Expo Router.
 - Local SQLite during the proof-of-concept phase.
+- One fixed Personal Portfolio in the wealth UI; the underlying portfolio model remains for a later deliberate multi-portfolio experience.
 - `decimal.js` for canonical wealth-domain decimal arithmetic; canonical decimal strings remain the persistence boundary.
 - Git/GitHub version control.
 - Windows host with WSL2-based development.

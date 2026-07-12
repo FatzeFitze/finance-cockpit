@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { CANONICAL_TRANSACTION_CSV_HEADERS, CANONICAL_TRANSACTION_CSV_VERSION, canCommitCanonicalCsvImport, exportCanonicalTransactionsCsv, parseCanonicalTransactionsCsv, validateCanonicalCsvImport } from './workbook-import';
+import { CANONICAL_TRANSACTION_CSV_HEADERS, CANONICAL_TRANSACTION_CSV_VERSION, canCommitCanonicalCsvImport, exportCanonicalTransactionsCsv, isCanonicalTransactionCsvFilename, parseCanonicalTransactionsCsv, validateCanonicalCsvImport } from './workbook-import';
 
 const csv = (rows: string[]) => new TextEncoder().encode([CANONICAL_TRANSACTION_CSV_HEADERS.join(','), ...rows].join('\n')).buffer;
 
@@ -24,4 +24,9 @@ test('exports the same versioned CSV contract with a stable transaction order', 
   const output = exportCanonicalTransactionsCsv([{ id: 'account' as never, portfolioId: 'portfolio' as never, name: 'Fictional Broker', baseCurrency: 'EUR' as never, isActive: true }], [], [{ id: 'transaction' as never, accountId: 'account' as never, type: 'CONTRIBUTION', tradeDate: '2026-01-01' as never, sequence: 0, amount: '100' as never, currency: 'EUR' as never, source: 'MANUAL' }]);
   assert.match(output, new RegExp(`^${CANONICAL_TRANSACTION_CSV_HEADERS.join(',')}`));
   assert.match(output, new RegExp(`${CANONICAL_TRANSACTION_CSV_VERSION},0,2026-01-01,Fictional Broker,CONTRIBUTION`));
+});
+
+test('accepts CSV filename variants without relying on provider MIME metadata', () => {
+  assert.equal(isCanonicalTransactionCsvFilename('transactions.CSV'), true);
+  assert.equal(isCanonicalTransactionCsvFilename('transactions.xlsx'), false);
 });

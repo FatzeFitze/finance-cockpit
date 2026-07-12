@@ -28,6 +28,31 @@ This append-only log preserves meaningful product, architecture, security, priva
 
 ## Decisions
 
+## DEC-2026-07-12-09 — Present one fixed Personal Portfolio for now
+
+- Status: Accepted
+- Date: 2026-07-12
+- Supersedes: None
+- Superseded by: None
+
+### Context
+
+The wealth data model can support multiple portfolios, but the current personal use case has one combined wealth pool. Exposing selectors and test/demo portfolios made navigation and housekeeping ambiguous before multi-portfolio workflows are designed.
+
+### Decision
+
+Present and import into one fixed `Personal Portfolio`. Keep the portfolio table and account ownership internally, but hide multi-portfolio selection from normal wealth, performance, snapshot, and CSV workflows. Provide an explicit cleanup screen for deleting legacy/test portfolios with record counts and confirmation.
+
+### Rationale
+
+This keeps the first real workflow focused while preserving a clean migration path to multiple portfolios. A dedicated cleanup flow is safer and clearer than a casual delete action in a portfolio selector.
+
+### Consequences
+
+- CSV imports always target Personal Portfolio and do not accept a portfolio name.
+- Legacy portfolio deletion removes its accounts, transactions, snapshots, and only assets/prices no longer referenced elsewhere.
+- Adding multiple portfolios later requires a deliberate navigation and ownership design, rather than merely re-enabling a selector.
+
 ## DEC-2026-07-12-08 — Use a canonical transaction CSV for bootstrap and export
 
 - Status: Accepted

@@ -18,6 +18,11 @@ const isIsoDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Numbe
 const isCurrency = (value: string) => /^[A-Z]{3}$/.test(value);
 const dangerousSpreadsheetPrefix = /^[=+\-@]/;
 
+/** Android document providers do not reliably label CSV files with the same MIME type. */
+export function isCanonicalTransactionCsvFilename(name: string): boolean {
+  return name.trim().toLowerCase().endsWith('.csv');
+}
+
 function parseCsv(input: string): string[][] {
   const rows: string[][] = []; let row: string[] = []; let cell = ''; let quoted = false;
   for (let index = 0; index < input.length; index += 1) { const character = input[index];

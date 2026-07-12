@@ -16,9 +16,12 @@ import {
     createPortfolioSnapshot,
     createPriceObservation,
     createTransaction,
+    deleteLegacyPortfolio,
+    ensurePersonalPortfolio,
     listAccountsByPortfolio,
     listAssets,
     listPortfolios,
+    listLegacyPortfolioSummaries,
     listPortfolioSnapshots,
     listPriceObservations,
     listTransactionsForAccount,
@@ -252,4 +255,25 @@ test('atomically rolls back a reviewed canonical CSV import if a staged sell can
 
   assert.equal((await listPortfolios(db)).length, 0);
   assert.equal((await listAssets(db)).length, 0);
+});
+
+test('keeps one personal portfolio while safely removing a legacy test portfolio and its unshared data', async () => {
+  const db = createTestDatabase();
+  await db.execAsync(WEALTH_SCHEMA_SQL);
+  await db.execAsync(WEALTH_PRICE_SCHEMA_SQL);
+  await db.execAsync(WEALTH_SNAPSHOT_SCHEMA_SQL);
+  const personal = await ensurePersonalPortfolio(db);
+  const legacy = await createPortfolio(db, { name: 'Fictional Test Portfolio', baseCurrency: 'EUR' as CurrencyCode });
+  const accountId = await createAccount(db, { portfolioId: legacy, name: 'Test broker', baseCurrency: 'EUR' as CurrencyCode });
+  const assetId = await createAsset(db, { name: 'Test asset', assetType: 'ETF', bucket: 'CORE', strategyCategory: 'BROAD_MARKET', tradingCurrency: 'EUR' as CurrencyCode });
+  await createTransaction(db, { accountId, assetId, type: 'BUY', tradeDate: '2026-01-01' as IsoDate, sequence: 0, quantity: parseNonNegativeDecimal('1'), unitPrice: parseNonNegativeDecimal('10'), fees: parseNonNegativeDecimal('0'), taxes: parseNonNegativeDecimal('0'), currency: 'EUR' as CurrencyCode, source: 'MANUAL' });
+  await createPriceObservation(db, { assetId, observedAt: '2026-01-01' as IsoDate, price: parseNonNegativeDecimal('10'), currency: 'EUR' as CurrencyCode, source: 'MANUAL' });
+  await createPortfolioSnapshot(db, { portfolioId: legacy, snapshotDate: '2026-01-01' as IsoDate, totalValue: parseNonNegativeDecimal('10'), baseCurrency: 'EUR' as CurrencyCode, source: 'MANUAL' });
+  const summaries = await listLegacyPortfolioSummaries(db);
+  assert.deepEqual(summaries.map((item) => [item.name, item.accountCount, item.transactionCount, item.snapshotCount]), [['Fictional Test Portfolio', 1, 1, 1]]);
+  await deleteLegacyPortfolio(db, legacy);
+  assert.equal((await listPortfolios(db)).length, 1);
+  assert.equal((await listPortfolios(db))[0].id, personal.id);
+  assert.equal((await listAssets(db)).length, 0);
+  await assert.rejects(() => deleteLegacyPortfolio(db, personal.id), /cannot be deleted/i);
 });

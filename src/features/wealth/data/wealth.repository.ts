@@ -18,6 +18,8 @@ import type {
     TransactionId,
 } from '../model/wealth.types';
 
+export const PERSONAL_PORTFOLIO_NAME = 'Personal Portfolio';
+
 function normalizeOptionalText(value?: string): string | null {
   const trimmed = value?.trim();
 
@@ -268,19 +270,60 @@ export async function listPortfolios(db: SQLiteDatabase): Promise<Portfolio[]> {
   return rows.map(mapPortfolioRow);
 }
 
-export async function ensurePersonalPortfolio(db: SQLiteDatabase): Promise<Portfolio> {
-  const existing = await listPortfolios(db);
+export async function findPersonalPortfolio(db: SQLiteDatabase): Promise<Portfolio | null> {
+  const row = await db.getFirstAsync<PortfolioRow>(
+    `SELECT id, name, base_currency, created_at, updated_at
+     FROM wealth_portfolios WHERE name = ? ORDER BY created_at ASC LIMIT 1`,
+    PERSONAL_PORTFOLIO_NAME,
+  );
+  return row ? mapPortfolioRow(row) : null;
+}
 
-  if (existing[0]) {
-    return existing[0];
-  }
+export async function ensurePersonalPortfolio(db: SQLiteDatabase): Promise<Portfolio> {
+  const existing = await findPersonalPortfolio(db);
+  if (existing) return existing;
 
   const id = await createPortfolio(db, {
-    name: 'Personal Portfolio',
+    name: PERSONAL_PORTFOLIO_NAME,
     baseCurrency: 'EUR' as Portfolio['baseCurrency'],
   });
 
-  return { id, name: 'Personal Portfolio', baseCurrency: 'EUR' as Portfolio['baseCurrency'] };
+  return { id, name: PERSONAL_PORTFOLIO_NAME, baseCurrency: 'EUR' as Portfolio['baseCurrency'] };
+}
+
+export type LegacyPortfolioSummary = Portfolio & { accountCount: number; transactionCount: number; snapshotCount: number };
+
+export async function listLegacyPortfolioSummaries(db: SQLiteDatabase): Promise<LegacyPortfolioSummary[]> {
+  const portfolios = await listPortfolios(db);
+  return Promise.all(portfolios.filter((portfolio) => portfolio.name !== PERSONAL_PORTFOLIO_NAME).map(async (portfolio) => {
+    const [accounts, transactions, snapshots] = await Promise.all([
+      db.getFirstAsync<{ count: number }>('SELECT COUNT(*) AS count FROM wealth_accounts WHERE portfolio_id = ?', portfolio.id),
+      db.getFirstAsync<{ count: number }>('SELECT COUNT(*) AS count FROM wealth_transactions WHERE account_id IN (SELECT id FROM wealth_accounts WHERE portfolio_id = ?)', portfolio.id),
+      db.getFirstAsync<{ count: number }>('SELECT COUNT(*) AS count FROM wealth_portfolio_snapshots WHERE portfolio_id = ?', portfolio.id),
+    ]);
+    return { ...portfolio, accountCount: accounts?.count ?? 0, transactionCount: transactions?.count ?? 0, snapshotCount: snapshots?.count ?? 0 };
+  }));
+}
+
+/** Deletes a legacy portfolio and only assets/prices no longer used by any remaining transaction. */
+export async function deleteLegacyPortfolio(db: SQLiteDatabase, portfolioId: PortfolioId): Promise<void> {
+  const portfolio = await db.getFirstAsync<PortfolioRow>('SELECT id, name, base_currency, created_at, updated_at FROM wealth_portfolios WHERE id = ?', portfolioId);
+  if (!portfolio) throw new Error('Portfolio not found');
+  if (portfolio.name === PERSONAL_PORTFOLIO_NAME) throw new Error('The personal portfolio cannot be deleted');
+  await db.withTransactionAsync(async () => {
+    const assets = await db.getAllAsync<{ asset_id: string }>(
+      `SELECT DISTINCT asset_id FROM wealth_transactions WHERE asset_id IS NOT NULL
+       AND account_id IN (SELECT id FROM wealth_accounts WHERE portfolio_id = ?)`, portfolioId,
+    );
+    await db.runAsync('DELETE FROM wealth_portfolio_snapshots WHERE portfolio_id = ?', portfolioId);
+    await db.runAsync('DELETE FROM wealth_transactions WHERE account_id IN (SELECT id FROM wealth_accounts WHERE portfolio_id = ?)', portfolioId);
+    await db.runAsync('DELETE FROM wealth_accounts WHERE portfolio_id = ?', portfolioId);
+    await db.runAsync('DELETE FROM wealth_portfolios WHERE id = ?', portfolioId);
+    for (const asset of assets) {
+      const remaining = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) AS count FROM wealth_transactions WHERE asset_id = ?', asset.asset_id);
+      if ((remaining?.count ?? 0) === 0) { await db.runAsync('DELETE FROM wealth_price_observations WHERE asset_id = ?', asset.asset_id); await db.runAsync('DELETE FROM wealth_assets WHERE id = ?', asset.asset_id); }
+    }
+  });
 }
 
 export async function createAccount(
@@ -486,10 +529,9 @@ export type CsvImportResult = {
 export async function commitCanonicalCsvImport(db: SQLiteDatabase, input: CsvImportCommit): Promise<CsvImportResult> {
   let result: CsvImportResult | undefined;
   await db.withTransactionAsync(async () => {
-    const existing = await listPortfolios(db);
-    const portfolio = existing[0] ?? (() => undefined)();
-    const portfolioId = portfolio?.id ?? await createPortfolio(db, { name: 'Personal Portfolio', baseCurrency: input.baseCurrency as Portfolio['baseCurrency'] });
-    const effectivePortfolio: Portfolio = portfolio ?? { id: portfolioId, name: 'Personal Portfolio', baseCurrency: input.baseCurrency as Portfolio['baseCurrency'] };
+    const portfolio = await findPersonalPortfolio(db);
+    const portfolioId = portfolio?.id ?? await createPortfolio(db, { name: PERSONAL_PORTFOLIO_NAME, baseCurrency: input.baseCurrency as Portfolio['baseCurrency'] });
+    const effectivePortfolio: Portfolio = portfolio ?? { id: portfolioId, name: PERSONAL_PORTFOLIO_NAME, baseCurrency: input.baseCurrency as Portfolio['baseCurrency'] };
     if (effectivePortfolio.baseCurrency !== input.baseCurrency) throw new Error('Workbook currency does not match the existing portfolio base currency');
     const [accounts, assets] = await Promise.all([listAccountsByPortfolio(db, portfolioId), listAssets(db)]);
     const accountIds = new Map(accounts.map((item) => [item.name.trim().toUpperCase(), item.id]));
@@ -548,6 +590,18 @@ export async function listTransactions(db: SQLiteDatabase): Promise<WealthTransa
      ORDER BY trade_date DESC, sequence DESC, id DESC`,
   );
 
+  return rows.map(mapTransactionRow);
+}
+
+export async function listTransactionsByPortfolio(db: SQLiteDatabase, portfolioId: PortfolioId): Promise<WealthTransaction[]> {
+  const rows = await db.getAllAsync<TransactionRow>(
+    `SELECT t.id, t.account_id, t.asset_id, t.type, t.trade_date, t.sequence, t.quantity, t.unit_price, t.gross_amount,
+            t.fees, t.taxes, t.currency, t.fx_rate_to_base, t.base_amount, t.reported_net_amount, t.note,
+            t.source_type, t.source_ref, t.is_deleted, t.created_at, t.updated_at
+     FROM wealth_transactions t JOIN wealth_accounts a ON a.id = t.account_id
+     WHERE a.portfolio_id = ? AND t.is_deleted = 0
+     ORDER BY t.trade_date DESC, t.sequence DESC, t.id DESC`, portfolioId,
+  );
   return rows.map(mapTransactionRow);
 }
 
