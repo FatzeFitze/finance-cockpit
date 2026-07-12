@@ -37,8 +37,8 @@ The project has two equally important goals:
 - For non-trivial changes, explain the relevant design and learning points at the user's level rather than only delivering code.
 - Verify changes proportionally with linting, type checks, tests, or focused runtime checks where available.
 - Never put secrets or sensitive personal financial data into source control, logs, fixtures, screenshots, or prompts.
-- Update `docs/project-context.md` whenever a meaningful scope, stack, workflow, security, or architecture decision is made. Record confirmed decisions separately from candidates and open questions.
+- Keep `docs/project-context.md` concise and current when decisions change present direction. Append meaningful product, architecture, security, privacy, stack, and workflow decisions to `docs/decision-log.md`, including rationale and consequences. Preserve superseded entries and link replacements; do not duplicate full decision narratives in the current context.
 
 ## Current context
 
-Read `docs/project-context.md` before making product or architecture decisions. It is the durable summary of current state, phased goals, confirmed direction, candidates, and open questions.
+Read `docs/project-context.md` and `docs/decision-log.md` before making product or architecture decisions. The context describes current state and direction; the log preserves decision history and rationale.

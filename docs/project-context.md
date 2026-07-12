@@ -120,7 +120,9 @@ Potential uses include receipt/invoice interpretation, field extraction, categor
 
 ## Context maintenance
 
-Update this file after meaningful decisions or direction changes, including:
+This file is the concise source of truth for current project state and direction. Historical rationale belongs in [`decision-log.md`](decision-log.md).
+
+Update this file when a meaningful decision changes current direction, including:
 
 - Confirming or changing the stack or backend.
 - Changing PoC/MVP scope or sequencing.
@@ -129,4 +131,4 @@ Update this file after meaningful decisions or direction changes, including:
 - Changing AI/OCR or privacy strategy.
 - Rejecting an integration for security, privacy, cost, or maintainability reasons.
 
-Keep confirmed decisions, candidates, observed implementation state, and open questions clearly separated.
+Keep confirmed decisions, candidates, observed implementation state, and open questions clearly separated. Replace stale statements instead of accumulating history. Append material decisions and their rationale to the decision log; supersede old entries rather than rewriting them.
