@@ -78,6 +78,7 @@ This section describes observed state, not a completeness or quality assessment.
 - Expo + React Native + TypeScript.
 - Expo Router.
 - Local SQLite during the proof-of-concept phase.
+- `decimal.js` for canonical wealth-domain decimal arithmetic; canonical decimal strings remain the persistence boundary.
 - Git/GitHub version control.
 - Windows host with WSL2-based development.
 - Low-operations philosophy; no private always-on home server.
@@ -113,7 +114,6 @@ Potential uses include receipt/invoice interpretation, field extraction, categor
 
 ## Open questions
 
-- Which Milestone 1 increment should establish decimal types, calculation tests, and the wealth persistence schema?
 - Which existing screens and persistence flows are complete enough to retain?
 - When should web support enter the roadmap?
 - How long should the project remain local-only?

@@ -78,3 +78,32 @@ Ledger-derived state reduces disagreement between holdings and history, retains 
 - Cash is initially derived per account; negative cash warns but does not block incomplete historical entry.
 - The personal workbook may inform private mapping and reconciliation but must not enter source control, fixtures, logs, screenshots, or documentation.
 - Transfers, automated market/FX data, tax-lot accounting, and stronger append-only corrections are deferred without treating them as ruled out.
+
+## DEC-2026-07-12-03 — Use decimal.js and canonical decimal strings for wealth arithmetic
+
+- Status: Accepted
+- Date: 2026-07-12
+- Supersedes: None
+- Superseded by: None
+
+### Context
+
+Wealth Milestone 1A requires exact decimal handling in an Expo/TypeScript application and a small test setup before persistence is introduced. Quantities, prices, FX rates, fees, and taxes must not depend on JavaScript binary floating-point behavior.
+
+### Decision
+
+Use `decimal.js` in the pure wealth domain and calculation layers. Accept and persist validated, normalized canonical decimal strings at domain boundaries. Use Node's built-in test runner with `tsx` for pure TypeScript domain tests.
+
+### Rationale
+
+`decimal.js` is a maintained, pure-JavaScript package with bundled TypeScript declarations, configurable precision and deterministic rounding, and no native or Node-only runtime dependency. It is compatible with Expo's JavaScript bundle and Hermes. Its API supports quantities, prices, FX rates, division, and explicit rounding without implementing custom financial arithmetic.
+
+The built-in test runner plus `tsx` adds little configuration and dependency surface for pure domain tests. A React Native-specific runner can be added when component or native-module behavior needs testing.
+
+### Consequences
+
+- Locale-aware UI parsing remains separate and must output canonical strings.
+- Canonical inputs reject whitespace, separators, symbols, and exponent notation; negative values are allowed only for signed derived results.
+- Decimal precision is configured centrally, and rounding occurs only at explicit financial boundaries.
+- Repository mappings will store strings and perform no arithmetic.
+- The test stack may expand later for React Native components, but pure wealth calculations remain runnable without Expo, React, SQLite, or a device.
