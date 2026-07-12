@@ -28,6 +28,32 @@ This append-only log preserves meaningful product, architecture, security, priva
 
 ## Decisions
 
+## DEC-2026-07-12-07 — Stage workbook imports locally and commit them atomically
+
+- Status: Accepted
+- Date: 2026-07-12
+- Supersedes: None
+- Superseded by: None
+
+### Context
+
+The private workbook can accelerate historical migration, but it may contain incomplete rows, repeated exports, calculated totals, or data that conflicts with the ledger.
+
+### Decision
+
+Parse only a locally selected XLSX workbook into reviewable staging rows. Validate supported transactions, canonical decimals, dates, required FX, likely duplicates, and staged oversells before allowing confirmation. Commit accounts, assets, transactions, price observations, and snapshots in one SQLite transaction with import provenance. Treat snapshot and broker-reported totals as reconciliation evidence rather than a second holdings truth.
+
+### Rationale
+
+This makes a failed import non-destructive, keeps financial records auditable, and gives the user a visible chance to correct or exclude source rows. Exact repeated transaction signatures are blocked conservatively to prevent accidental re-import.
+
+### Consequences
+
+- The import UI must never create records while parsing or previewing.
+- Unsupported or inconsistent rows require correction or exclusion before import.
+- The current importer accepts XLSX only; CSV may be added later with equivalent staging safeguards.
+- Imported prices and snapshots preserve import provenance; snapshot differences remain visible as reconciliation evidence.
+
 ## DEC-2026-07-12-01 — Separate current context from decision history
 
 - Status: Accepted

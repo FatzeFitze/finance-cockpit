@@ -173,6 +173,7 @@ The first versions prioritize correctness, auditability, privacy, and manual con
 - Milestone 1B: complete
 - Milestone 1C: complete
 - Milestone 1D: complete
+- Milestone 7: complete — reviewed local XLSX staging, validation, duplicate/oversell checks, atomic import, imported prices/snapshots, and reconciliation evidence.
 - Milestone 2: complete (contribution, withdrawal, buy, and sell entry; other transaction types deferred)
 - Milestone 3: complete (pure ledger projection for the initial transaction types)
 - Milestone 4: complete (current overview and persisted manual price entry)

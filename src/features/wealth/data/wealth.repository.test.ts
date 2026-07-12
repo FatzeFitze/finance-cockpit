@@ -11,6 +11,7 @@ import { WEALTH_SNAPSHOT_SCHEMA_SQL } from './wealth-snapshot-schema';
 import {
     createAccount,
     createAsset,
+    commitWorkbookImport,
     createPortfolio,
     createPortfolioSnapshot,
     createPriceObservation,
@@ -236,4 +237,20 @@ test('persists immutable manual portfolio snapshots with optional reconciliation
   assert.equal(snapshots.length, 1);
   assert.equal(snapshots[0].totalValue, '1234.56');
   assert.equal(snapshots[0].reportedTotalValue, '1235');
+});
+
+test('atomically rolls back a reviewed workbook import if a staged sell cannot be committed', async () => {
+  const db = createTestDatabase();
+  await db.execAsync(WEALTH_SCHEMA_SQL);
+  await db.execAsync(WEALTH_PRICE_SCHEMA_SQL);
+  await db.execAsync(WEALTH_SNAPSHOT_SCHEMA_SQL);
+
+  await assert.rejects(() => commitWorkbookImport(db, {
+    baseCurrency: 'EUR',
+    transactions: [{ row: 2, included: true, date: '2026-01-02', account: 'Fictional Broker', type: 'SELL', identifier: 'FICT', assetName: 'Fictional ETF', amount: '', quantity: '1', unitPrice: '10', fees: '0', taxes: '0', currency: 'EUR', fxRateToBase: '' }],
+    prices: [], snapshots: [],
+  }), /exceeds/i);
+
+  assert.equal((await listPortfolios(db)).length, 0);
+  assert.equal((await listAssets(db)).length, 0);
 });

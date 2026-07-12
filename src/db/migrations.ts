@@ -129,6 +129,17 @@ const migrations: Migration[] = [
       await db.execAsync(WEALTH_SNAPSHOT_SCHEMA_SQL);
     },
   },
+  {
+    version: 9,
+    name: 'prevent repeated imported transaction provenance',
+    up: async (db) => {
+      await db.execAsync(`
+        CREATE UNIQUE INDEX IF NOT EXISTS wealth_transactions_import_source_ref_unique_idx
+          ON wealth_transactions(source_type, source_ref)
+          WHERE source_type = 'IMPORT' AND source_ref IS NOT NULL;
+      `);
+    },
+  },
 ];
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
