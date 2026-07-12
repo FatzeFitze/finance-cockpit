@@ -127,14 +127,16 @@ test('persists portfolios, accounts, assets, and transactions with soft deletion
 test('seeds a developer-friendly wealth demo dataset', async () => {
   const db = createTestDatabase();
   await db.execAsync(WEALTH_SCHEMA_SQL);
+  await db.execAsync(WEALTH_PRICE_SCHEMA_SQL);
+  await db.execAsync(WEALTH_SNAPSHOT_SCHEMA_SQL);
 
   const summary = await seedFictionalWealthData(db);
 
-  assert.equal(summary.portfolioCount, 1);
-  assert.equal(summary.accountCount, 1);
-  assert.equal(summary.assetCount, 1);
-  assert.equal(summary.transactionCount, 1);
-  assert.equal(summary.portfolioName, 'Demo Portfolio');
+  assert.equal(summary.portfolioName, 'Fictional Demo Portfolio');
+  assert.equal((await listAccountsByPortfolio(db, summary.portfolioId)).length, 2);
+  assert.equal((await listPortfolioSnapshots(db, summary.portfolioId)).length, 4);
+  assert.equal((await listPriceObservations(db)).length, 6);
+  assert.equal((await seedFictionalWealthData(db)).portfolioId, summary.portfolioId);
 });
 
 test('rejects duplicate ISINs and invalid references', async () => {

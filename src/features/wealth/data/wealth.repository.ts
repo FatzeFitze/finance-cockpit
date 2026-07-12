@@ -563,65 +563,24 @@ export async function softDeleteTransaction(
   );
 }
 
-export async function seedFictionalWealthData(db: SQLiteDatabase): Promise<{
-  portfolioCount: number;
-  accountCount: number;
-  assetCount: number;
-  transactionCount: number;
-  portfolioName: string;
-}> {
-  const existingPortfolios = await listPortfolios(db);
-
-  if (existingPortfolios.length > 0) {
-    return {
-      portfolioCount: existingPortfolios.length,
-      accountCount: (await listAccountsByPortfolio(db, existingPortfolios[0].id)).length,
-      assetCount: (await listAssets(db)).length,
-      transactionCount: (await listTransactionsForAccount(db, (await listAccountsByPortfolio(db, existingPortfolios[0].id))[0]?.id as AccountId)).length,
-      portfolioName: existingPortfolios[0].name,
-    };
-  }
-
-  const portfolioId = await createPortfolio(db, {
-    name: 'Demo Portfolio',
-    baseCurrency: 'EUR' as Portfolio['baseCurrency'],
+export async function seedFictionalWealthData(db: SQLiteDatabase): Promise<{ portfolioId: PortfolioId; portfolioName: string }> {
+  const existing = (await listPortfolios(db)).find((portfolio) => portfolio.name === 'Fictional Demo Portfolio');
+  if (existing) return { portfolioId: existing.id, portfolioName: existing.name };
+  let result: { portfolioId: PortfolioId; portfolioName: string } | undefined;
+  await db.withTransactionAsync(async () => {
+    const portfolioId = await createPortfolio(db, { name: 'Fictional Demo Portfolio', baseCurrency: 'EUR' as Portfolio['baseCurrency'] });
+    const brokerA = await createAccount(db, { portfolioId, name: 'Fictional Broker A', baseCurrency: 'EUR' as Account['baseCurrency'] });
+    const brokerB = await createAccount(db, { portfolioId, name: 'Fictional Broker B', baseCurrency: 'EUR' as Account['baseCurrency'] });
+    const worldEtf = await createAsset(db, { name: 'Fictional World Equity ETF', isin: 'XD0000DEMO1', ticker: 'WDEMO', assetType: 'ETF', bucket: 'CORE', strategyCategory: 'BROAD_MARKET', tradingCurrency: 'EUR' as Asset['tradingCurrency'] });
+    const energyStock = await createAsset(db, { name: 'Fictional Green Energy Stock', isin: 'XD0000DEMO2', ticker: 'GDEMO', assetType: 'STOCK', bucket: 'SATELLITE', strategyCategory: 'SECTOR_BET', tradingCurrency: 'EUR' as Asset['tradingCurrency'] });
+    const bondEtf = await createAsset(db, { name: 'Fictional Euro Bond ETF', isin: 'XD0000DEMO3', ticker: 'BDEMO', assetType: 'ETF', bucket: 'CORE', strategyCategory: 'INCOME', tradingCurrency: 'EUR' as Asset['tradingCurrency'] });
+    const cash = (accountId: AccountId, type: 'CONTRIBUTION' | 'WITHDRAWAL', amount: string, date: string, sequence = 0) => createTransaction(db, { accountId, type, tradeDate: date as never, sequence, amount: amount as never, currency: 'EUR' as never, source: 'MANUAL' });
+    const trade = (accountId: AccountId, assetId: AssetId, type: 'BUY' | 'SELL', quantity: string, price: string, fee: string, date: string, sequence = 0) => createTransaction(db, { accountId, assetId, type, tradeDate: date as never, sequence, quantity: quantity as never, unitPrice: price as never, fees: fee as never, taxes: '0' as never, currency: 'EUR' as never, source: 'MANUAL' });
+    await cash(brokerA, 'CONTRIBUTION', '8000', '2026-01-02'); await trade(brokerA, worldEtf, 'BUY', '30', '100', '10', '2026-01-03'); await cash(brokerB, 'CONTRIBUTION', '4000', '2026-02-01'); await trade(brokerB, bondEtf, 'BUY', '20', '50', '2', '2026-02-02'); await trade(brokerA, energyStock, 'BUY', '10', '80', '4', '2026-03-01'); await trade(brokerA, worldEtf, 'SELL', '4', '95', '2', '2026-05-01'); await cash(brokerB, 'WITHDRAWAL', '500', '2026-06-01');
+    for (const [assetId, observedAt, price] of [[worldEtf, '2026-01-31', '102'], [worldEtf, '2026-06-30', '112'], [energyStock, '2026-03-31', '76'], [energyStock, '2026-06-30', '92'], [bondEtf, '2026-02-28', '51'], [bondEtf, '2026-06-30', '52']] as const) await createPriceObservation(db, { assetId, observedAt: observedAt as never, price: price as never, currency: 'EUR' as never, source: 'MANUAL' });
+    for (const [snapshotDate, totalValue, reportedTotalValue] of [['2026-01-31', '8050', '8049'], ['2026-02-28', '12060', '12058'], ['2026-03-31', '12020', '12022'], ['2026-06-30', '12560', '12555']] as const) await createPortfolioSnapshot(db, { portfolioId, snapshotDate: snapshotDate as never, totalValue: totalValue as never, reportedTotalValue: reportedTotalValue as never, baseCurrency: 'EUR' as never, source: 'MANUAL' });
+    result = { portfolioId, portfolioName: 'Fictional Demo Portfolio' };
   });
-
-  const accountId = await createAccount(db, {
-    portfolioId,
-    name: 'Demo Broker',
-    baseCurrency: 'EUR' as Account['baseCurrency'],
-  });
-
-  const assetId = await createAsset(db, {
-    name: 'Demo ETF',
-    isin: 'AT0000DEMO1',
-    ticker: 'DEMO',
-    assetType: 'ETF',
-    bucket: 'CORE',
-    strategyCategory: 'BROAD_MARKET',
-    tradingCurrency: 'EUR' as Asset['tradingCurrency'],
-  });
-
-  await createTransaction(db, {
-    accountId,
-    assetId,
-    type: 'BUY',
-    tradeDate: '2026-01-02' as TradeTransaction['tradeDate'],
-    sequence: 0,
-    quantity: '5' as TradeTransaction['quantity'],
-    unitPrice: '10' as TradeTransaction['unitPrice'],
-    fees: '0' as TradeTransaction['fees'],
-    taxes: '0' as TradeTransaction['taxes'],
-    currency: 'EUR' as TradeTransaction['currency'],
-    source: 'MANUAL',
-  });
-
-  return {
-    portfolioCount: 1,
-    accountCount: 1,
-    assetCount: 1,
-    transactionCount: 1,
-    portfolioName: 'Demo Portfolio',
-  };
+  if (!result) throw new Error('Could not create fictional demo portfolio');
+  return result;
 }
