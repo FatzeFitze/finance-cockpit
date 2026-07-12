@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { parseNonNegativeDecimal } from '../model/decimal';
+import type { Portfolio, PortfolioSnapshot, WealthTransaction } from '../model/wealth.types';
+import { buildPerformanceSummary } from './performance';
+const portfolio = { id: 'portfolio-1', name: 'Fictional', baseCurrency: 'EUR' } as Portfolio;
+const contribution = { id: 't1', type: 'CONTRIBUTION', accountId: 'a1', tradeDate: '2026-01-01', sequence: 0, amount: parseNonNegativeDecimal('1000'), currency: 'EUR', source: 'MANUAL' } as WealthTransaction;
+const snapshots = [{ id: 's1', portfolioId: portfolio.id, snapshotDate: '2026-01-31', totalValue: parseNonNegativeDecimal('1050'), baseCurrency: 'EUR', source: 'MANUAL', createdAt: '2026-01-31T00:00:00Z' }, { id: 's2', portfolioId: portfolio.id, snapshotDate: '2026-02-28', totalValue: parseNonNegativeDecimal('1100'), baseCurrency: 'EUR', source: 'MANUAL', createdAt: '2026-02-28T00:00:00Z' }] as unknown as PortfolioSnapshot[];
+test('keeps contributions separate from snapshot gain', () => { const summary = buildPerformanceSummary(portfolio, [contribution], snapshots); assert.equal(summary.points[0].cumulativeNetContributions, '1000'); assert.equal(summary.points[1].simpleGain, '100'); assert.ok(summary.moneyWeightedReturn.annualRate); });
+test('does not invent time-weighted returns from irregular snapshots', () => { assert.match(buildPerformanceSummary(portfolio, [contribution], snapshots).timeWeightedReturnReason, /irregular manual snapshots/i); });

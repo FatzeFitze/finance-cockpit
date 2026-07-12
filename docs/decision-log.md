@@ -182,3 +182,28 @@ This keeps historical evidence auditable and provides a lightweight reconciliati
 - A snapshot remains stable while the current reconstructed total can change.
 - Missing-price data blocks a new snapshot rather than creating a deceptively complete one.
 - Historical periods without a recorded snapshot remain explicit gaps for Milestone 6 charts.
+
+## DEC-2026-07-12-07 — Use money-weighted return only when the recorded cash-flow history supports it
+
+- Status: Accepted
+- Date: 2026-07-12
+- Supersedes: None
+- Superseded by: None
+
+### Context
+
+Portfolio value and contributions are now recorded at different dates. A return figure must not mistake new savings for investment appreciation.
+
+### Decision
+
+Show snapshot values beside cumulative net external contributions and their simple difference. Calculate an annualized money-weighted return only from dated contributions/withdrawals and a later stored snapshot. Do not calculate a time-weighted return from irregular manual snapshots.
+
+### Rationale
+
+Money-weighted return accounts for the timing of the user’s contributions. Time-weighted return needs valuations around external cash flows; irregular manual snapshots cannot establish those sub-period returns honestly.
+
+### Consequences
+
+- Performance remains unavailable until enough dated evidence exists.
+- The displayed simple gain is not labelled a return or annualized performance.
+- Time-weighted return can be added later when the observation model supports it.

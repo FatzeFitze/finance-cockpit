@@ -177,4 +177,5 @@ The first versions prioritize correctness, auditability, privacy, and manual con
 - Milestone 3: complete (pure ledger projection for the initial transaction types)
 - Milestone 4: complete (current overview and persisted manual price entry)
 - Milestone 5: complete (dated prices, immutable snapshots, and manual total reconciliation)
-- Milestones 6–8: not started
+- Milestone 6: complete (snapshot-based performance history and money-weighted return)
+- Milestones 7–8: not started
