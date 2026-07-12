@@ -175,4 +175,6 @@ The first versions prioritize correctness, auditability, privacy, and manual con
 - Milestone 1D: complete
 - Milestone 2: complete (contribution, withdrawal, buy, and sell entry; other transaction types deferred)
 - Milestone 3: complete (pure ledger projection for the initial transaction types)
-- Milestones 4–8: not started
+- Milestone 4: complete (current overview and persisted manual price entry)
+- Milestone 5: in progress (dated price observations were brought forward; snapshots and reconciliation remain)
+- Milestones 6–8: not started

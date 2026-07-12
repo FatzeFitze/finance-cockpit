@@ -132,3 +132,28 @@ These four types cover funding an account and the basic acquisition/disposal wor
 - The UI creates a lightweight account or minimally classified asset when needed.
 - A full ledger projection remains the authority for later cross-history validation, cash warnings, cost basis, and performance.
 - Transaction deletion is soft so normal views omit it while audit/correction history remains available.
+
+## DEC-2026-07-12-05 — Bring manual price observations forward for the wealth overview
+
+- Status: Accepted
+- Date: 2026-07-12
+- Supersedes: None
+- Superseded by: None
+
+### Context
+
+The current-wealth overview requires manually entered prices and timestamps that survive app restart. The original roadmap placed full price history and snapshots in the following milestone.
+
+### Decision
+
+Introduce an append-only local price-observation table as part of the current overview. The overview uses the latest manual base-currency price per open asset and labels missing prices as incomplete. Snapshots, historical reconciliation, and richer FX valuation remain Milestone 5 work.
+
+### Rationale
+
+Persisting dated observations now avoids a disposable in-memory price feature and keeps the first valuation view auditable. It also preserves a clean path to historical valuation without inventing a separate mutable “current price” truth.
+
+### Consequences
+
+- Manual prices and observation dates survive restarts.
+- A non-base-currency price is visibly incomplete until FX valuation support arrives.
+- Price history exists before snapshots, but no snapshot is created or rewritten by this increment.

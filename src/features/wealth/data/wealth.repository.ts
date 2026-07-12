@@ -10,6 +10,7 @@ import type {
     CreateWealthTransactionInput,
     Portfolio,
     PortfolioId,
+    PriceObservation,
     TradeTransaction,
     WealthTransaction,
     TransactionId,
@@ -78,6 +79,15 @@ type TransactionRow = {
   updated_at: string;
 };
 
+type PriceObservationRow = {
+  id: string;
+  asset_id: string;
+  observed_at: string;
+  price: string;
+  currency: string;
+  source_type: string;
+};
+
 function mapPortfolioRow(row: PortfolioRow): Portfolio {
   return {
     id: row.id as PortfolioId,
@@ -109,6 +119,10 @@ function mapAssetRow(row: AssetRow): Asset {
     tradingCurrency: row.trading_currency as Asset['tradingCurrency'],
     isActive: row.is_active === 1,
   };
+}
+
+function mapPriceObservationRow(row: PriceObservationRow): PriceObservation {
+  return { id: row.id, assetId: row.asset_id as AssetId, observedAt: row.observed_at as PriceObservation['observedAt'], price: row.price as PriceObservation['price'], currency: row.currency as PriceObservation['currency'], source: row.source_type as PriceObservation['source'] };
 }
 
 function mapTransactionRow(row: TransactionRow): WealthTransaction {
@@ -336,6 +350,30 @@ export async function listAssets(db: SQLiteDatabase): Promise<Asset[]> {
   );
 
   return rows.map(mapAssetRow);
+}
+
+export async function createPriceObservation(
+  db: SQLiteDatabase,
+  input: Omit<PriceObservation, 'id'> & { sourceRef?: string },
+): Promise<string> {
+  parseNonNegativeDecimal(input.price);
+  if (!input.assetId || !/^\d{4}-\d{2}-\d{2}$/.test(input.observedAt) || !input.currency) throw new Error('Invalid price observation');
+  const id = `price-${Date.now()}-${Math.round(Math.random() * 1_000_000)}`;
+  await db.runAsync(
+    `INSERT INTO wealth_price_observations (id, asset_id, observed_at, price, currency, source_type, source_ref, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    id, input.assetId, input.observedAt, input.price, input.currency, input.source, input.sourceRef ?? null, new Date().toISOString(),
+  );
+  return id;
+}
+
+export async function listPriceObservations(db: SQLiteDatabase): Promise<PriceObservation[]> {
+  const rows = await db.getAllAsync<PriceObservationRow>(
+    `SELECT id, asset_id, observed_at, price, currency, source_type
+     FROM wealth_price_observations
+     ORDER BY observed_at DESC, id DESC`,
+  );
+  return rows.map(mapPriceObservationRow);
 }
 
 export async function createTransaction(

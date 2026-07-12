@@ -6,14 +6,17 @@ import test from 'node:test';
 import { parseNonNegativeDecimal } from '../model/decimal';
 import type { CurrencyCode, IsoDate } from '../model/wealth.types';
 import { WEALTH_SCHEMA_SQL } from './wealth-schema';
+import { WEALTH_PRICE_SCHEMA_SQL } from './wealth-price-schema';
 import {
     createAccount,
     createAsset,
     createPortfolio,
+    createPriceObservation,
     createTransaction,
     listAccountsByPortfolio,
     listAssets,
     listPortfolios,
+    listPriceObservations,
     listTransactionsForAccount,
     seedFictionalWealthData,
     softDeleteTransaction,
@@ -205,4 +208,15 @@ test('rejects a structurally malformed transaction before persistence', async ()
   const db = createTestDatabase();
   await db.execAsync(WEALTH_SCHEMA_SQL);
   await assert.rejects(() => createTransaction(db, { accountId: 'account' as never, type: 'BUY', tradeDate: '2026-01-01' as IsoDate, sequence: 0, assetId: '' as never, quantity: undefined as never, unitPrice: undefined as never, fees: parseNonNegativeDecimal('0'), taxes: parseNonNegativeDecimal('0'), currency: 'EUR' as CurrencyCode, source: 'MANUAL' }), /invalid wealth trade/i);
+});
+
+test('persists dated manual price observations', async () => {
+  const db = createTestDatabase();
+  await db.execAsync(WEALTH_SCHEMA_SQL);
+  await db.execAsync(WEALTH_PRICE_SCHEMA_SQL);
+  const assetId = await createAsset(db, { name: 'Fictional ETF', assetType: 'ETF', bucket: 'CORE', strategyCategory: 'BROAD_MARKET', tradingCurrency: 'EUR' as CurrencyCode });
+  await createPriceObservation(db, { assetId, observedAt: '2026-02-01' as IsoDate, price: parseNonNegativeDecimal('123.45'), currency: 'EUR' as CurrencyCode, source: 'MANUAL' });
+  const prices = await listPriceObservations(db);
+  assert.equal(prices.length, 1);
+  assert.equal(prices[0].price, '123.45');
 });

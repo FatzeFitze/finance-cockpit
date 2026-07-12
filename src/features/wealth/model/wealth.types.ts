@@ -111,6 +111,8 @@ export type WealthIssueCode =
   | 'INVALID_TRANSACTION_SHAPE'
   | 'AMOUNT_MISMATCH'
   | 'DUPLICATE_ISIN'
+  | 'MISSING_PRICE'
+  | 'STALE_PRICE'
   | 'UNSUPPORTED_TRANSACTION_TYPE';
 
 export type WealthIssue = {
@@ -155,4 +157,13 @@ export type PositionAmounts = {
   averageUnitCost: DecimalString;
   realizedGrossResult: DecimalString;
   realizedNetResult: DecimalString;
+};
+
+export type PriceObservation = {
+  id: string;
+  assetId: AssetId;
+  observedAt: IsoDate;
+  price: NonNegativeDecimalString;
+  currency: CurrencyCode;
+  source: TransactionSource;
 };
