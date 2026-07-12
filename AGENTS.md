@@ -35,8 +35,15 @@ The project has two equally important goals:
 - Preserve unrelated user changes and inspect existing code before editing.
 - Favor modular boundaries so expenses, documents, analytics, watchlists, and later integrations can evolve independently.
 - For non-trivial changes, explain the relevant design and learning points at the user's level rather than only delivering code.
+- Teach practical Git habits as part of the learning goal. At meaningful, verified checkpoints, proactively say whether it is a good time to commit and briefly explain why.
+- When recommending a commit, suggest a concise commit message that accurately describes the completed change. Prefer one coherent concern per commit and do not encourage committing broken, unverified, sensitive, or unrelated changes together.
+- If the working tree contains unrelated user changes, identify the intended commit scope and remind the user to stage selectively rather than assuming everything should be committed.
 - Verify changes proportionally with linting, type checks, tests, or focused runtime checks where available.
 - Never put secrets or sensitive personal financial data into source control, logs, fixtures, screenshots, or prompts.
+- The repository lives on the WSL2 Linux filesystem. Read `docs/development-environment.md` before diagnosing or working around Codex Desktop/WSL filesystem behavior.
+- Prefer native WSL tools for Expo, Git, tests, and filesystem operations.
+- When the Windows desktop patch helper fails on an existing WSL file with the documented sandbox-helper error, use the audited native-WSL patch fallback described in `docs/development-environment.md`; do not rewrite whole files through ad hoc shell commands.
+
 - Keep `docs/project-context.md` concise and current when decisions change present direction. Append meaningful product, architecture, security, privacy, stack, and workflow decisions to `docs/decision-log.md`, including rationale and consequences. Preserve superseded entries and link replacements; do not duplicate full decision narratives in the current context.
 
 ## Current context
