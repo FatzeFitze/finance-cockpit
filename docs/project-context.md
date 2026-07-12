@@ -20,8 +20,8 @@ Finance Cockpit is a private, mobile-first personal-finance hub intended for gen
 
 - Begin with watchlists and pre-buy decision support.
 - Support candidate tracking, notes, research context, and structured reasoning.
-- Wealth tracking includes one overall portfolio, lightweight broker accounts, assets, a transaction ledger, calculated positions and cash, prices, snapshots, allocation, performance, and a reviewed local workbook import.
-- Build the wealth experience incrementally and manual-first; workbook imports are staged, validated, reviewed, and atomically committed only after the internal model and calculations are trustworthy.
+- Wealth tracking includes one overall portfolio, lightweight broker accounts, assets, a transaction ledger, calculated positions and cash, prices, snapshots, allocation, performance, and reviewed canonical CSV import/export.
+- Build the wealth experience incrementally and manual-first; canonical transaction CSV imports are staged, validated, reviewed, and atomically committed only after the internal model and calculations are trustworthy.
 - Do not start with direct broker integrations or automated investment decisions.
 
 ## Delivery phases
@@ -35,7 +35,7 @@ The goal is to validate the workflow and create an early usable application:
 - Local persistence.
 - Expense list and basic summary/dashboard.
 - Small watchlist prototype.
-- Wealth-domain specification followed by local ledger persistence, manual entry for contributions, withdrawals, buys, and sells, a current overview with manual dated price observations, immutable total snapshots with optional broker-total reconciliation, snapshot-based performance history with money-weighted return, and reviewed local XLSX import.
+- Wealth-domain specification followed by local ledger persistence, manual entry for contributions, withdrawals, buys, and sells, a current overview with manual dated price observations, immutable total snapshots with optional broker-total reconciliation, snapshot-based performance history with money-weighted return, and reviewed canonical transaction CSV import/export.
 - Smooth local development and test loop.
 
 ### MVP

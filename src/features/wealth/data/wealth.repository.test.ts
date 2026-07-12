@@ -11,7 +11,7 @@ import { WEALTH_SNAPSHOT_SCHEMA_SQL } from './wealth-snapshot-schema';
 import {
     createAccount,
     createAsset,
-    commitWorkbookImport,
+    commitCanonicalCsvImport,
     createPortfolio,
     createPortfolioSnapshot,
     createPriceObservation,
@@ -239,16 +239,15 @@ test('persists immutable manual portfolio snapshots with optional reconciliation
   assert.equal(snapshots[0].reportedTotalValue, '1235');
 });
 
-test('atomically rolls back a reviewed workbook import if a staged sell cannot be committed', async () => {
+test('atomically rolls back a reviewed canonical CSV import if a staged sell cannot be committed', async () => {
   const db = createTestDatabase();
   await db.execAsync(WEALTH_SCHEMA_SQL);
   await db.execAsync(WEALTH_PRICE_SCHEMA_SQL);
   await db.execAsync(WEALTH_SNAPSHOT_SCHEMA_SQL);
 
-  await assert.rejects(() => commitWorkbookImport(db, {
+  await assert.rejects(() => commitCanonicalCsvImport(db, {
     baseCurrency: 'EUR',
-    transactions: [{ row: 2, included: true, date: '2026-01-02', account: 'Fictional Broker', type: 'SELL', identifier: 'FICT', assetName: 'Fictional ETF', amount: '', quantity: '1', unitPrice: '10', fees: '0', taxes: '0', currency: 'EUR', fxRateToBase: '' }],
-    prices: [], snapshots: [],
+    transactions: [{ row: 2, included: true, sequence: '0', date: '2026-01-02', account: 'Fictional Broker', type: 'SELL', isin: '', ticker: 'FICT', assetName: 'Fictional ETF', amount: '', quantity: '1', unitPrice: '10', fees: '0', taxes: '0', currency: 'EUR', fxRateToBase: '' }],
   }), /exceeds/i);
 
   assert.equal((await listPortfolios(db)).length, 0);

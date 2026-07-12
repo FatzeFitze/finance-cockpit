@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { decimal, parseNonNegativeDecimal } from '../model/decimal';
-import type { WorkbookImportCommit, StagedWorkbookTransaction } from '../services/workbook-import';
+import type { CsvImportCommit, StagedCsvTransaction } from '../services/workbook-import';
 
 import type {
     Account,
@@ -469,25 +469,22 @@ export async function createTransaction(
   return id as TransactionId;
 }
 
-function importAssetKey(identifier: string, name: string): string {
-  return (identifier || name).trim().toUpperCase();
+function importAssetKey(isin: string, ticker: string, name: string): string {
+  return (isin || ticker || name).trim().toUpperCase();
 }
 
-function importTransactionReference(row: StagedWorkbookTransaction): string {
-  return `workbook:${[row.row, row.account, row.type, row.date, row.identifier, row.assetName, row.amount, row.quantity, row.unitPrice, row.fees, row.taxes, row.currency].join('|')}`;
+function importTransactionReference(row: StagedCsvTransaction): string {
+  return `csv-v1:${[row.sequence, row.account, row.type, row.date, row.isin, row.ticker, row.assetName, row.amount, row.quantity, row.unitPrice, row.fees, row.taxes, row.currency].join('|')}`;
 }
 
-export type WorkbookImportResult = {
+export type CsvImportResult = {
   portfolioId: PortfolioId;
   transactionCount: number;
-  priceCount: number;
-  snapshotCount: number;
-  reconciliation: { snapshotDate: string; difference?: string }[];
 };
 
-/** Commits only a previously validated, reviewed staging payload. The transaction includes every created entity. */
-export async function commitWorkbookImport(db: SQLiteDatabase, input: WorkbookImportCommit): Promise<WorkbookImportResult> {
-  let result: WorkbookImportResult | undefined;
+/** Commits only a previously validated, reviewed canonical CSV staging payload. */
+export async function commitCanonicalCsvImport(db: SQLiteDatabase, input: CsvImportCommit): Promise<CsvImportResult> {
+  let result: CsvImportResult | undefined;
   await db.withTransactionAsync(async () => {
     const existing = await listPortfolios(db);
     const portfolio = existing[0] ?? (() => undefined)();
@@ -498,32 +495,29 @@ export async function commitWorkbookImport(db: SQLiteDatabase, input: WorkbookIm
     const accountIds = new Map(accounts.map((item) => [item.name.trim().toUpperCase(), item.id]));
     const assetIds = new Map<string, AssetId>();
     for (const asset of assets) for (const key of [asset.isin, asset.ticker, asset.name]) if (key) assetIds.set(key.trim().toUpperCase(), asset.id);
-    const accountIdFor = async (name: string, currency: string) => {
+    const accountIdFor = async (name: string) => {
       const key = name.trim().toUpperCase(); const current = accountIds.get(key);
       if (current) return current;
       const id = await createAccount(db, { portfolioId, name, baseCurrency: effectivePortfolio.baseCurrency }); accountIds.set(key, id); return id;
     };
-    const assetIdFor = async (identifier: string, name: string, currency: string) => {
-      const key = importAssetKey(identifier, name); const current = assetIds.get(key);
+    const assetIdFor = async (isin: string, ticker: string, name: string, currency: string) => {
+      const key = importAssetKey(isin, ticker, name); const current = assetIds.get(key);
       if (current) return current;
-      const isin = /^[A-Z]{2}[A-Z0-9]{10}$/i.test(identifier) ? identifier.toUpperCase() : undefined;
-      const id = await createAsset(db, { name: name || identifier, isin, ticker: isin ? undefined : identifier || undefined, assetType: 'OTHER', bucket: 'SATELLITE', strategyCategory: 'OTHER', tradingCurrency: currency as Asset['tradingCurrency'] });
-      for (const assetKey of [identifier, name]) if (assetKey) assetIds.set(assetKey.trim().toUpperCase(), id); return id;
+      const id = await createAsset(db, { name: name || isin || ticker, isin: isin || undefined, ticker: ticker || undefined, assetType: 'OTHER', bucket: 'SATELLITE', strategyCategory: 'OTHER', tradingCurrency: currency as Asset['tradingCurrency'] });
+      for (const assetKey of [isin, ticker, name]) if (assetKey) assetIds.set(assetKey.trim().toUpperCase(), id); return id;
     };
     for (const row of input.transactions) {
-      const accountId = await accountIdFor(row.account, row.currency);
+      const accountId = await accountIdFor(row.account);
       const sourceRef = importTransactionReference(row);
-      if (row.type === 'CONTRIBUTION' || row.type === 'WITHDRAWAL') await createTransaction(db, { accountId, type: row.type, tradeDate: row.date as never, sequence: row.row, amount: parseNonNegativeDecimal(row.amount), currency: row.currency as never, ...(row.fxRateToBase ? { fxRateToBase: parseNonNegativeDecimal(row.fxRateToBase) } : {}), source: 'IMPORT', sourceRef });
+      if (row.type === 'CONTRIBUTION' || row.type === 'WITHDRAWAL') await createTransaction(db, { accountId, type: row.type, tradeDate: row.date as never, sequence: Number(row.sequence), amount: parseNonNegativeDecimal(row.amount), currency: row.currency as never, ...(row.fxRateToBase ? { fxRateToBase: parseNonNegativeDecimal(row.fxRateToBase) } : {}), source: 'IMPORT', sourceRef });
       else {
-        const assetId = await assetIdFor(row.identifier, row.assetName, row.currency);
-        await createTransaction(db, { accountId, assetId, type: row.type as 'BUY' | 'SELL', tradeDate: row.date as never, sequence: row.row, quantity: parseNonNegativeDecimal(row.quantity), unitPrice: parseNonNegativeDecimal(row.unitPrice), fees: parseNonNegativeDecimal(row.fees), taxes: parseNonNegativeDecimal(row.taxes), currency: row.currency as never, ...(row.fxRateToBase ? { fxRateToBase: parseNonNegativeDecimal(row.fxRateToBase) } : {}), source: 'IMPORT', sourceRef });
+        const assetId = await assetIdFor(row.isin, row.ticker, row.assetName, row.currency);
+        await createTransaction(db, { accountId, assetId, type: row.type as 'BUY' | 'SELL', tradeDate: row.date as never, sequence: Number(row.sequence), quantity: parseNonNegativeDecimal(row.quantity), unitPrice: parseNonNegativeDecimal(row.unitPrice), fees: parseNonNegativeDecimal(row.fees), taxes: parseNonNegativeDecimal(row.taxes), currency: row.currency as never, ...(row.fxRateToBase ? { fxRateToBase: parseNonNegativeDecimal(row.fxRateToBase) } : {}), source: 'IMPORT', sourceRef });
       }
     }
-    for (const row of input.prices) { const assetId = await assetIdFor(row.identifier, row.assetName, row.currency); await createPriceObservation(db, { assetId, observedAt: row.date as never, price: parseNonNegativeDecimal(row.price), currency: row.currency as never, source: 'IMPORT', sourceRef: `workbook-price:${row.row}|${row.date}|${row.identifier}|${row.assetName}` }); }
-    for (const row of input.snapshots) await createPortfolioSnapshot(db, { portfolioId, snapshotDate: row.date as never, totalValue: parseNonNegativeDecimal(row.totalValue), ...(row.reportedTotalValue ? { reportedTotalValue: parseNonNegativeDecimal(row.reportedTotalValue) } : {}), baseCurrency: row.currency as never, source: 'IMPORT' });
-    result = { portfolioId, transactionCount: input.transactions.length, priceCount: input.prices.length, snapshotCount: input.snapshots.length, reconciliation: input.snapshots.map((row) => ({ snapshotDate: row.date, ...(row.reportedTotalValue ? { difference: decimal(parseNonNegativeDecimal(row.totalValue)).minus(parseNonNegativeDecimal(row.reportedTotalValue)).toFixed() } : {}) })) };
+    result = { portfolioId, transactionCount: input.transactions.length };
   });
-  if (!result) throw new Error('Workbook import did not produce a commit result');
+  if (!result) throw new Error('CSV import did not produce a commit result');
   return result;
 }
 

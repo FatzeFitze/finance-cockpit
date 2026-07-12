@@ -28,6 +28,31 @@ This append-only log preserves meaningful product, architecture, security, priva
 
 ## Decisions
 
+## DEC-2026-07-12-08 — Use a canonical transaction CSV for bootstrap and export
+
+- Status: Accepted
+- Date: 2026-07-12
+- Supersedes: DEC-2026-07-12-07
+- Superseded by: None
+
+### Context
+
+The immediate goal is to bootstrap the app from one existing private portfolio tracker. Supporting arbitrary workbook layouts, prices, and snapshots would make the first import path broader and less predictable than needed.
+
+### Decision
+
+Use one exact, UTF-8, versioned `finance-cockpit-transactions-v1` CSV contract for the four supported ledger events. The import screen accepts only this contract and stages, validates, reviews, and atomically commits its rows. The application exports the same contract. Prices and snapshots remain explicit app workflows and are outside this bootstrap format.
+
+### Rationale
+
+A canonical format is easier to test, document, export, back up, and evolve safely than heuristic spreadsheet parsing. A private workbook can be converted once without making its column conventions an application API.
+
+### Consequences
+
+- The previous XLSX-specific decision is superseded; `xlsx` is not part of the app runtime.
+- Import/export is a stable transaction-ledger interchange boundary, not a broker-file interpreter.
+- A future XLSX or broker adapter must convert into this canonical staging model and retain the same review safeguards.
+
 ## DEC-2026-07-12-07 — Stage workbook imports locally and commit them atomically
 
 - Status: Accepted
