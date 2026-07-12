@@ -7,8 +7,8 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'reac
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import {
-  CategorySpendingChart,
-  MonthlySpendingChart,
+    CategorySpendingChart,
+    MonthlySpendingChart,
 } from '../../expenses/components/DashboardCharts';
 import { ExpenseList } from '../../expenses/components/ExpenseList';
 import { listExpenses } from '../../expenses/data/expenses.repository';
@@ -16,11 +16,12 @@ import { buildExpenseDashboard } from '../../expenses/model/expense.analytics';
 import type { Expense } from '../../expenses/model/expense.types';
 import { listRecurringExpenses } from '../../recurring/data/recurring-expenses.repository';
 import {
-  formatStoredDateForDisplay,
-  getRecurringExpenseDateForCurrentMonth,
-  isRecurringExpenseDue,
+    formatStoredDateForDisplay,
+    getRecurringExpenseDateForCurrentMonth,
+    isRecurringExpenseDue,
 } from '../../recurring/model/recurring-expense.logic';
 import type { RecurringExpense } from '../../recurring/model/recurring-expense.types';
+import { seedFictionalWealthData } from '../../wealth/data/wealth.repository';
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
@@ -28,6 +29,7 @@ export default function HomeScreen() {
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([]);
+  const [wealthSummary, setWealthSummary] = useState<Awaited<ReturnType<typeof seedFictionalWealthData>> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useFocusEffect(
@@ -82,6 +84,11 @@ export default function HomeScreen() {
 
   function handleOpenRecurring() {
     router.navigate('/recurring');
+  }
+
+  async function handleSeedWealthData() {
+    const summary = await seedFictionalWealthData(db);
+    setWealthSummary(summary);
   }
 
   const formattedAllTimeTotal = new Intl.NumberFormat('de-DE', {
@@ -194,6 +201,27 @@ export default function HomeScreen() {
                   );
                 })}
               </View>
+            )}
+          </View>
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <ThemedText type="subtitle">Wealth demo data</ThemedText>
+              <Pressable onPress={handleSeedWealthData} style={styles.linkButton}>
+                <ThemedText type="defaultSemiBold">Seed demo wealth</ThemedText>
+              </Pressable>
+            </View>
+
+            {wealthSummary ? (
+              <View style={styles.rowCard}>
+                <ThemedText type="defaultSemiBold">{wealthSummary.portfolioName}</ThemedText>
+                <ThemedText>
+                  {wealthSummary.portfolioCount} portfolio · {wealthSummary.accountCount} account ·{' '}
+                  {wealthSummary.assetCount} asset · {wealthSummary.transactionCount} transaction
+                </ThemedText>
+              </View>
+            ) : (
+              <ThemedText>No wealth demo data seeded yet.</ThemedText>
             )}
           </View>
 

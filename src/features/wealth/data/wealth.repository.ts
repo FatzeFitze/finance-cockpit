@@ -324,3 +324,66 @@ export async function softDeleteTransaction(
     transactionId,
   );
 }
+
+export async function seedFictionalWealthData(db: SQLiteDatabase): Promise<{
+  portfolioCount: number;
+  accountCount: number;
+  assetCount: number;
+  transactionCount: number;
+  portfolioName: string;
+}> {
+  const existingPortfolios = await listPortfolios(db);
+
+  if (existingPortfolios.length > 0) {
+    return {
+      portfolioCount: existingPortfolios.length,
+      accountCount: (await listAccountsByPortfolio(db, existingPortfolios[0].id)).length,
+      assetCount: (await listAssets(db)).length,
+      transactionCount: (await listTransactionsForAccount(db, (await listAccountsByPortfolio(db, existingPortfolios[0].id))[0]?.id as AccountId)).length,
+      portfolioName: existingPortfolios[0].name,
+    };
+  }
+
+  const portfolioId = await createPortfolio(db, {
+    name: 'Demo Portfolio',
+    baseCurrency: 'EUR' as Portfolio['baseCurrency'],
+  });
+
+  const accountId = await createAccount(db, {
+    portfolioId,
+    name: 'Demo Broker',
+    baseCurrency: 'EUR' as Account['baseCurrency'],
+  });
+
+  const assetId = await createAsset(db, {
+    name: 'Demo ETF',
+    isin: 'AT0000DEMO1',
+    ticker: 'DEMO',
+    assetType: 'ETF',
+    bucket: 'CORE',
+    strategyCategory: 'BROAD_MARKET',
+    tradingCurrency: 'EUR' as Asset['tradingCurrency'],
+  });
+
+  await createTransaction(db, {
+    accountId,
+    assetId,
+    type: 'BUY',
+    tradeDate: '2026-01-02' as TradeTransaction['tradeDate'],
+    sequence: 0,
+    quantity: '5' as TradeTransaction['quantity'],
+    unitPrice: '10' as TradeTransaction['unitPrice'],
+    fees: '0' as TradeTransaction['fees'],
+    taxes: '0' as TradeTransaction['taxes'],
+    currency: 'EUR' as TradeTransaction['currency'],
+    source: 'MANUAL',
+  });
+
+  return {
+    portfolioCount: 1,
+    accountCount: 1,
+    assetCount: 1,
+    transactionCount: 1,
+    portfolioName: 'Demo Portfolio',
+  };
+}

@@ -15,6 +15,7 @@ import {
     listAssets,
     listPortfolios,
     listTransactionsForAccount,
+    seedFictionalWealthData,
     softDeleteTransaction,
 } from './wealth.repository';
 
@@ -114,6 +115,19 @@ test('persists portfolios, accounts, assets, and transactions with soft deletion
 
   const remainingTransactions = await listTransactionsForAccount(db, accountId);
   assert.equal(remainingTransactions.length, 0);
+});
+
+test('seeds a developer-friendly wealth demo dataset', async () => {
+  const db = createTestDatabase();
+  await db.execAsync(WEALTH_SCHEMA_SQL);
+
+  const summary = await seedFictionalWealthData(db);
+
+  assert.equal(summary.portfolioCount, 1);
+  assert.equal(summary.accountCount, 1);
+  assert.equal(summary.assetCount, 1);
+  assert.equal(summary.transactionCount, 1);
+  assert.equal(summary.portfolioName, 'Demo Portfolio');
 });
 
 test('rejects duplicate ISINs and invalid references', async () => {
