@@ -2,6 +2,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { WEALTH_SCHEMA_SQL } from '@/src/features/wealth/data/wealth-schema';
 import { WEALTH_PRICE_SCHEMA_SQL } from '@/src/features/wealth/data/wealth-price-schema';
+import { WEALTH_SNAPSHOT_SCHEMA_SQL } from '@/src/features/wealth/data/wealth-snapshot-schema';
 
 type Migration = {
   version: number;
@@ -119,6 +120,13 @@ const migrations: Migration[] = [
     name: 'create wealth price observations table',
     up: async (db) => {
       await db.execAsync(WEALTH_PRICE_SCHEMA_SQL);
+    },
+  },
+  {
+    version: 8,
+    name: 'create wealth portfolio snapshots table',
+    up: async (db) => {
+      await db.execAsync(WEALTH_SNAPSHOT_SCHEMA_SQL);
     },
   },
 ];

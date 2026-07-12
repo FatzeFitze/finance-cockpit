@@ -7,15 +7,18 @@ import { parseNonNegativeDecimal } from '../model/decimal';
 import type { CurrencyCode, IsoDate } from '../model/wealth.types';
 import { WEALTH_SCHEMA_SQL } from './wealth-schema';
 import { WEALTH_PRICE_SCHEMA_SQL } from './wealth-price-schema';
+import { WEALTH_SNAPSHOT_SCHEMA_SQL } from './wealth-snapshot-schema';
 import {
     createAccount,
     createAsset,
     createPortfolio,
+    createPortfolioSnapshot,
     createPriceObservation,
     createTransaction,
     listAccountsByPortfolio,
     listAssets,
     listPortfolios,
+    listPortfolioSnapshots,
     listPriceObservations,
     listTransactionsForAccount,
     seedFictionalWealthData,
@@ -219,4 +222,16 @@ test('persists dated manual price observations', async () => {
   const prices = await listPriceObservations(db);
   assert.equal(prices.length, 1);
   assert.equal(prices[0].price, '123.45');
+});
+
+test('persists immutable manual portfolio snapshots with optional reconciliation evidence', async () => {
+  const db = createTestDatabase();
+  await db.execAsync(WEALTH_SCHEMA_SQL);
+  await db.execAsync(WEALTH_SNAPSHOT_SCHEMA_SQL);
+  const portfolioId = await createPortfolio(db, { name: 'Fictional Portfolio', baseCurrency: 'EUR' as CurrencyCode });
+  await createPortfolioSnapshot(db, { portfolioId, snapshotDate: '2026-02-01' as IsoDate, totalValue: parseNonNegativeDecimal('1234.56'), reportedTotalValue: parseNonNegativeDecimal('1235'), baseCurrency: 'EUR' as CurrencyCode, source: 'MANUAL' });
+  const snapshots = await listPortfolioSnapshots(db, portfolioId);
+  assert.equal(snapshots.length, 1);
+  assert.equal(snapshots[0].totalValue, '1234.56');
+  assert.equal(snapshots[0].reportedTotalValue, '1235');
 });

@@ -10,6 +10,7 @@ import type {
     CreateWealthTransactionInput,
     Portfolio,
     PortfolioId,
+    PortfolioSnapshot,
     PriceObservation,
     TradeTransaction,
     WealthTransaction,
@@ -88,6 +89,17 @@ type PriceObservationRow = {
   source_type: string;
 };
 
+type PortfolioSnapshotRow = {
+  id: string;
+  portfolio_id: string;
+  snapshot_date: string;
+  total_value: string;
+  base_currency: string;
+  source_type: string;
+  reported_total_value: string | null;
+  created_at: string;
+};
+
 function mapPortfolioRow(row: PortfolioRow): Portfolio {
   return {
     id: row.id as PortfolioId,
@@ -123,6 +135,10 @@ function mapAssetRow(row: AssetRow): Asset {
 
 function mapPriceObservationRow(row: PriceObservationRow): PriceObservation {
   return { id: row.id, assetId: row.asset_id as AssetId, observedAt: row.observed_at as PriceObservation['observedAt'], price: row.price as PriceObservation['price'], currency: row.currency as PriceObservation['currency'], source: row.source_type as PriceObservation['source'] };
+}
+
+function mapPortfolioSnapshotRow(row: PortfolioSnapshotRow): PortfolioSnapshot {
+  return { id: row.id, portfolioId: row.portfolio_id as PortfolioId, snapshotDate: row.snapshot_date as PortfolioSnapshot['snapshotDate'], totalValue: row.total_value as PortfolioSnapshot['totalValue'], baseCurrency: row.base_currency as PortfolioSnapshot['baseCurrency'], source: row.source_type as PortfolioSnapshot['source'], ...(row.reported_total_value ? { reportedTotalValue: row.reported_total_value as PortfolioSnapshot['reportedTotalValue'] } : {}), createdAt: row.created_at };
 }
 
 function mapTransactionRow(row: TransactionRow): WealthTransaction {
@@ -374,6 +390,30 @@ export async function listPriceObservations(db: SQLiteDatabase): Promise<PriceOb
      ORDER BY observed_at DESC, id DESC`,
   );
   return rows.map(mapPriceObservationRow);
+}
+
+export async function createPortfolioSnapshot(
+  db: SQLiteDatabase,
+  input: Omit<PortfolioSnapshot, 'id' | 'createdAt'>,
+): Promise<string> {
+  parseNonNegativeDecimal(input.totalValue);
+  if (input.reportedTotalValue) parseNonNegativeDecimal(input.reportedTotalValue);
+  if (!input.portfolioId || !/^\d{4}-\d{2}-\d{2}$/.test(input.snapshotDate) || !input.baseCurrency) throw new Error('Invalid portfolio snapshot');
+  const id = `snapshot-${Date.now()}-${Math.round(Math.random() * 1_000_000)}`;
+  await db.runAsync(
+    `INSERT INTO wealth_portfolio_snapshots (id, portfolio_id, snapshot_date, total_value, base_currency, source_type, reported_total_value, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    id, input.portfolioId, input.snapshotDate, input.totalValue, input.baseCurrency, input.source, input.reportedTotalValue ?? null, new Date().toISOString(),
+  );
+  return id;
+}
+
+export async function listPortfolioSnapshots(db: SQLiteDatabase, portfolioId: PortfolioId): Promise<PortfolioSnapshot[]> {
+  const rows = await db.getAllAsync<PortfolioSnapshotRow>(
+    `SELECT id, portfolio_id, snapshot_date, total_value, base_currency, source_type, reported_total_value, created_at
+     FROM wealth_portfolio_snapshots WHERE portfolio_id = ? ORDER BY snapshot_date DESC, id DESC`, portfolioId,
+  );
+  return rows.map(mapPortfolioSnapshotRow);
 }
 
 export async function createTransaction(

@@ -157,3 +157,28 @@ Persisting dated observations now avoids a disposable in-memory price feature an
 - Manual prices and observation dates survive restarts.
 - A non-base-currency price is visibly incomplete until FX valuation support arrives.
 - Price history exists before snapshots, but no snapshot is created or rewritten by this increment.
+
+## DEC-2026-07-12-06 — Keep wealth snapshots immutable and reconcile them manually
+
+- Status: Accepted
+- Date: 2026-07-12
+- Supersedes: None
+- Superseded by: None
+
+### Context
+
+Current valuation is reconstructed from the ledger and latest recorded prices. It must remain distinguishable from historical evidence, especially after later price or transaction corrections.
+
+### Decision
+
+Allow the user to record an immutable manual portfolio-total snapshot only when open holdings have usable base-currency prices. Store its valuation date, calculated total, base currency, manual provenance, and an optional broker-reported total. Never update an existing snapshot when price records change.
+
+### Rationale
+
+This keeps historical evidence auditable and provides a lightweight reconciliation workflow without implying tax-accounting authority or inventing missing historical data.
+
+### Consequences
+
+- A snapshot remains stable while the current reconstructed total can change.
+- Missing-price data blocks a new snapshot rather than creating a deceptively complete one.
+- Historical periods without a recorded snapshot remain explicit gaps for Milestone 6 charts.

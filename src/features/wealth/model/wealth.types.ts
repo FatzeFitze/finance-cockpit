@@ -167,3 +167,14 @@ export type PriceObservation = {
   currency: CurrencyCode;
   source: TransactionSource;
 };
+
+export type PortfolioSnapshot = {
+  id: string;
+  portfolioId: PortfolioId;
+  snapshotDate: IsoDate;
+  totalValue: DecimalString;
+  baseCurrency: CurrencyCode;
+  source: TransactionSource;
+  reportedTotalValue?: DecimalString;
+  createdAt: string;
+};
