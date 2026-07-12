@@ -174,4 +174,5 @@ The first versions prioritize correctness, auditability, privacy, and manual con
 - Milestone 1C: complete
 - Milestone 1D: complete
 - Milestone 2: complete (contribution, withdrawal, buy, and sell entry; other transaction types deferred)
-- Milestones 3–8: not started
+- Milestone 3: complete (pure ledger projection for the initial transaction types)
+- Milestones 4–8: not started
