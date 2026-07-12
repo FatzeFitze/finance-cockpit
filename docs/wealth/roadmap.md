@@ -169,5 +169,9 @@ The first versions prioritize correctness, auditability, privacy, and manual con
 - Milestone 0A: complete
 - Milestone 0B: complete
 - Milestone 0C: complete
-- Milestones 1–8: not started
-
+- Milestone 1A: complete
+- Milestone 1B: complete
+- Milestone 1C: complete
+- Milestone 1D: complete
+- Milestone 2: complete (contribution, withdrawal, buy, and sell entry; other transaction types deferred)
+- Milestones 3–8: not started

@@ -98,6 +98,10 @@ export type WealthTransaction =
   | FeeTransaction
   | TaxTransaction;
 
+export type CreateWealthTransactionInput =
+  | Omit<TradeTransaction, 'id' | 'source'> & { source?: TransactionSource }
+  | Omit<ExternalCashTransaction, 'id' | 'source'> & { source?: TransactionSource };
+
 export type WealthIssueSeverity = 'warning' | 'blocking';
 
 export type WealthIssueCode =

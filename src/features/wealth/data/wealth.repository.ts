@@ -1,13 +1,17 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { decimal, parseNonNegativeDecimal } from '../model/decimal';
+
 import type {
     Account,
     AccountId,
     Asset,
     AssetId,
+    CreateWealthTransactionInput,
     Portfolio,
     PortfolioId,
     TradeTransaction,
+    WealthTransaction,
     TransactionId,
 } from '../model/wealth.types';
 
@@ -107,25 +111,100 @@ function mapAssetRow(row: AssetRow): Asset {
   };
 }
 
-function mapTransactionRow(row: TransactionRow): TradeTransaction {
-  return {
+function mapTransactionRow(row: TransactionRow): WealthTransaction {
+  const base = {
     id: row.id as TransactionId,
-    type: row.type as TradeTransaction['type'],
     accountId: row.account_id as AccountId,
-    assetId: row.asset_id as AssetId,
     tradeDate: row.trade_date as TradeTransaction['tradeDate'],
     sequence: row.sequence,
-    quantity: row.quantity as TradeTransaction['quantity'],
-    unitPrice: row.unit_price as TradeTransaction['unitPrice'],
-    fees: row.fees as TradeTransaction['fees'],
-    taxes: row.taxes as TradeTransaction['taxes'],
     currency: row.currency as TradeTransaction['currency'],
-    fxRateToBase: row.fx_rate_to_base as TradeTransaction['fxRateToBase'],
-    note: row.note ?? undefined,
+    ...(row.fx_rate_to_base ? { fxRateToBase: row.fx_rate_to_base as TradeTransaction['fxRateToBase'] } : {}),
+    ...(row.note ? { note: row.note } : {}),
     source: row.source_type as TradeTransaction['source'],
-    sourceRef: row.source_ref ?? undefined,
-    reportedNetAmount: row.reported_net_amount as TradeTransaction['reportedNetAmount'],
+    ...(row.source_ref ? { sourceRef: row.source_ref } : {}),
   };
+
+  if (row.type === 'BUY' || row.type === 'SELL') {
+    if (!row.asset_id || !row.quantity || !row.unit_price) {
+      throw new Error('Invalid stored wealth trade transaction');
+    }
+
+    return {
+      ...base,
+      type: row.type,
+      assetId: row.asset_id as AssetId,
+      quantity: row.quantity as TradeTransaction['quantity'],
+      unitPrice: row.unit_price as TradeTransaction['unitPrice'],
+      fees: row.fees as TradeTransaction['fees'],
+      taxes: row.taxes as TradeTransaction['taxes'],
+      ...(row.reported_net_amount
+        ? { reportedNetAmount: row.reported_net_amount as TradeTransaction['reportedNetAmount'] }
+        : {}),
+    };
+  }
+
+  if (row.type === 'CONTRIBUTION' || row.type === 'WITHDRAWAL') {
+    if (!row.gross_amount) {
+      throw new Error('Invalid stored wealth cash transaction');
+    }
+
+    return { ...base, type: row.type, amount: row.gross_amount as never };
+  }
+
+  throw new Error(`Unsupported stored wealth transaction type: ${row.type}`);
+}
+
+function validateTransactionInput(input: CreateWealthTransactionInput): void {
+  if (!input.accountId || !input.tradeDate || !input.currency || !Number.isInteger(input.sequence) || input.sequence < 0) throw new Error('Invalid wealth transaction shape');
+  if (input.type === 'BUY' || input.type === 'SELL') {
+    if (!input.assetId || input.quantity == null || input.unitPrice == null) throw new Error('Invalid wealth trade transaction shape');
+    parseNonNegativeDecimal(input.quantity); parseNonNegativeDecimal(input.unitPrice); parseNonNegativeDecimal(input.fees); parseNonNegativeDecimal(input.taxes); return;
+  }
+  if (input.type === 'CONTRIBUTION' || input.type === 'WITHDRAWAL') {
+    if (input.amount == null) throw new Error('Invalid wealth cash transaction shape');
+    parseNonNegativeDecimal(input.amount); return;
+  }
+  throw new Error('Unsupported wealth transaction type');
+}
+
+async function assertSellDoesNotOversell(
+  db: SQLiteDatabase,
+  input: CreateWealthTransactionInput,
+  excludedTransactionId?: TransactionId,
+): Promise<void> {
+  if (input.type !== 'SELL') {
+    return;
+  }
+
+  const rows = await db.getAllAsync<TransactionRow>(
+    `SELECT id, account_id, asset_id, type, trade_date, sequence, quantity, unit_price, gross_amount,
+            fees, taxes, currency, fx_rate_to_base, base_amount, reported_net_amount, note,
+            source_type, source_ref, is_deleted, created_at, updated_at
+     FROM wealth_transactions
+     WHERE account_id = ? AND asset_id = ? AND is_deleted = 0
+       AND (? IS NULL OR id <> ?)
+       AND (trade_date < ? OR (trade_date = ? AND sequence <= ?))
+     ORDER BY trade_date ASC, sequence ASC, id ASC`,
+    input.accountId,
+    input.assetId,
+    excludedTransactionId ?? null,
+    excludedTransactionId ?? null,
+    input.tradeDate,
+    input.tradeDate,
+    input.sequence,
+  );
+
+  const available = rows.reduce((quantity, row) => {
+    if ((row.type !== 'BUY' && row.type !== 'SELL') || !row.quantity) {
+      return quantity;
+    }
+
+    return row.type === 'BUY' ? quantity.plus(row.quantity) : quantity.minus(row.quantity);
+  }, decimal('0' as never));
+
+  if (available.lessThan(input.quantity)) {
+    throw new Error('Sell quantity exceeds the recorded position for this account and asset');
+  }
 }
 
 export async function createPortfolio(
@@ -156,6 +235,21 @@ export async function listPortfolios(db: SQLiteDatabase): Promise<Portfolio[]> {
   );
 
   return rows.map(mapPortfolioRow);
+}
+
+export async function ensurePersonalPortfolio(db: SQLiteDatabase): Promise<Portfolio> {
+  const existing = await listPortfolios(db);
+
+  if (existing[0]) {
+    return existing[0];
+  }
+
+  const id = await createPortfolio(db, {
+    name: 'Personal Portfolio',
+    baseCurrency: 'EUR' as Portfolio['baseCurrency'],
+  });
+
+  return { id, name: 'Personal Portfolio', baseCurrency: 'EUR' as Portfolio['baseCurrency'] };
 }
 
 export async function createAccount(
@@ -246,12 +340,13 @@ export async function listAssets(db: SQLiteDatabase): Promise<Asset[]> {
 
 export async function createTransaction(
   db: SQLiteDatabase,
-  input: Pick<TradeTransaction, 'accountId' | 'assetId' | 'type' | 'tradeDate' | 'sequence' | 'quantity' | 'unitPrice' | 'fees' | 'taxes' | 'currency' | 'fxRateToBase' | 'note' | 'source'> & {
-    sourceRef?: string;
-  },
+  input: CreateWealthTransactionInput,
 ): Promise<TransactionId> {
   const id = `transaction-${Date.now()}-${Math.round(Math.random() * 1_000_000)}`;
   const now = new Date().toISOString();
+
+  validateTransactionInput(input);
+  await assertSellDoesNotOversell(db, input);
 
   try {
     await db.runAsync(
@@ -262,15 +357,15 @@ export async function createTransaction(
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )`,
       id,
       input.accountId,
-      input.assetId ?? null,
+      'assetId' in input ? input.assetId : null,
       input.type,
       input.tradeDate,
       input.sequence,
-      input.quantity ?? null,
-      input.unitPrice ?? null,
-      null,
-      input.fees ?? '0',
-      input.taxes ?? '0',
+      'quantity' in input ? input.quantity : null,
+      'unitPrice' in input ? input.unitPrice : null,
+      'amount' in input ? input.amount : null,
+      'fees' in input ? input.fees : '0',
+      'taxes' in input ? input.taxes : '0',
       input.currency,
       input.fxRateToBase ?? null,
       null,
@@ -298,7 +393,7 @@ export async function createTransaction(
 export async function listTransactionsForAccount(
   db: SQLiteDatabase,
   accountId: AccountId,
-): Promise<TradeTransaction[]> {
+): Promise<WealthTransaction[]> {
   const rows = await db.getAllAsync<TransactionRow>(
     `SELECT id, account_id, asset_id, type, trade_date, sequence, quantity, unit_price, gross_amount,
             fees, taxes, currency, fx_rate_to_base, base_amount, reported_net_amount, note,
@@ -310,6 +405,71 @@ export async function listTransactionsForAccount(
   );
 
   return rows.map(mapTransactionRow);
+}
+
+export async function listTransactions(db: SQLiteDatabase): Promise<WealthTransaction[]> {
+  const rows = await db.getAllAsync<TransactionRow>(
+    `SELECT id, account_id, asset_id, type, trade_date, sequence, quantity, unit_price, gross_amount,
+            fees, taxes, currency, fx_rate_to_base, base_amount, reported_net_amount, note,
+            source_type, source_ref, is_deleted, created_at, updated_at
+     FROM wealth_transactions
+     WHERE is_deleted = 0
+     ORDER BY trade_date DESC, sequence DESC, id DESC`,
+  );
+
+  return rows.map(mapTransactionRow);
+}
+
+export async function getTransactionById(
+  db: SQLiteDatabase,
+  transactionId: TransactionId,
+): Promise<WealthTransaction | null> {
+  const row = await db.getFirstAsync<TransactionRow>(
+    `SELECT id, account_id, asset_id, type, trade_date, sequence, quantity, unit_price, gross_amount,
+            fees, taxes, currency, fx_rate_to_base, base_amount, reported_net_amount, note,
+            source_type, source_ref, is_deleted, created_at, updated_at
+     FROM wealth_transactions
+     WHERE id = ? AND is_deleted = 0`,
+    transactionId,
+  );
+
+  return row ? mapTransactionRow(row) : null;
+}
+
+export async function updateTransaction(
+  db: SQLiteDatabase,
+  transactionId: TransactionId,
+  input: CreateWealthTransactionInput,
+): Promise<void> {
+  const now = new Date().toISOString();
+
+  validateTransactionInput(input);
+  await assertSellDoesNotOversell(db, input, transactionId);
+
+  await db.runAsync(
+    `UPDATE wealth_transactions
+     SET account_id = ?, asset_id = ?, type = ?, trade_date = ?, sequence = ?, quantity = ?,
+         unit_price = ?, gross_amount = ?, fees = ?, taxes = ?, currency = ?, fx_rate_to_base = ?,
+         note = ?, source_type = ?, source_ref = ?, updated_at = ?
+     WHERE id = ? AND is_deleted = 0`,
+    input.accountId,
+    'assetId' in input ? input.assetId : null,
+    input.type,
+    input.tradeDate,
+    input.sequence,
+    'quantity' in input ? input.quantity : null,
+    'unitPrice' in input ? input.unitPrice : null,
+    'amount' in input ? input.amount : null,
+    'fees' in input ? input.fees : '0',
+    'taxes' in input ? input.taxes : '0',
+    input.currency,
+    input.fxRateToBase ?? null,
+    input.note ?? null,
+    input.source ?? 'MANUAL',
+    input.sourceRef ?? null,
+    now,
+    transactionId,
+  );
 }
 
 export async function softDeleteTransaction(

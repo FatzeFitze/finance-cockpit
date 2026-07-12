@@ -17,6 +17,7 @@ import {
     listTransactionsForAccount,
     seedFictionalWealthData,
     softDeleteTransaction,
+    updateTransaction,
 } from './wealth.repository';
 
 class SqliteAdapter {
@@ -156,7 +157,7 @@ test('rejects duplicate ISINs and invalid references', async () => {
     /duplicate/i,
   );
 
-  const portfolioId = await createPortfolio(db, {
+  await createPortfolio(db, {
     name: 'Portfolio',
     baseCurrency: 'EUR' as CurrencyCode,
   });
@@ -178,4 +179,30 @@ test('rejects duplicate ISINs and invalid references', async () => {
       }),
     /foreign key|reference/i,
   );
+});
+
+test('persists cash transactions and prevents overselling an account position', async () => {
+  const db = createTestDatabase();
+  await db.execAsync(WEALTH_SCHEMA_SQL);
+  const portfolioId = await createPortfolio(db, { name: 'Portfolio', baseCurrency: 'EUR' as CurrencyCode });
+  const accountId = await createAccount(db, { portfolioId, name: 'Broker', baseCurrency: 'EUR' as CurrencyCode });
+  const assetId = await createAsset(db, { name: 'Asset', assetType: 'ETF', bucket: 'CORE', strategyCategory: 'BROAD_MARKET', tradingCurrency: 'EUR' as CurrencyCode });
+
+  await createTransaction(db, { accountId, type: 'CONTRIBUTION', tradeDate: '2026-01-01' as IsoDate, sequence: 0, amount: parseNonNegativeDecimal('100'), currency: 'EUR' as CurrencyCode, source: 'MANUAL' });
+  await createTransaction(db, { accountId, assetId, type: 'BUY', tradeDate: '2026-01-02' as IsoDate, sequence: 0, quantity: parseNonNegativeDecimal('2'), unitPrice: parseNonNegativeDecimal('10'), fees: parseNonNegativeDecimal('0'), taxes: parseNonNegativeDecimal('0'), currency: 'EUR' as CurrencyCode, source: 'MANUAL' });
+
+  await assert.rejects(() => createTransaction(db, { accountId, assetId, type: 'SELL', tradeDate: '2026-01-03' as IsoDate, sequence: 0, quantity: parseNonNegativeDecimal('3'), unitPrice: parseNonNegativeDecimal('10'), fees: parseNonNegativeDecimal('0'), taxes: parseNonNegativeDecimal('0'), currency: 'EUR' as CurrencyCode, source: 'MANUAL' }), /exceeds/i);
+
+  const transactions = await listTransactionsForAccount(db, accountId);
+  assert.equal(transactions[0].type, 'CONTRIBUTION');
+  assert.equal('amount' in transactions[0] && transactions[0].amount, '100');
+
+  await updateTransaction(db, transactions[0].id, { accountId, type: 'WITHDRAWAL', tradeDate: '2026-01-01' as IsoDate, sequence: 0, amount: parseNonNegativeDecimal('50'), currency: 'EUR' as CurrencyCode, source: 'MANUAL' });
+  assert.equal((await listTransactionsForAccount(db, accountId))[0].type, 'WITHDRAWAL');
+});
+
+test('rejects a structurally malformed transaction before persistence', async () => {
+  const db = createTestDatabase();
+  await db.execAsync(WEALTH_SCHEMA_SQL);
+  await assert.rejects(() => createTransaction(db, { accountId: 'account' as never, type: 'BUY', tradeDate: '2026-01-01' as IsoDate, sequence: 0, assetId: '' as never, quantity: undefined as never, unitPrice: undefined as never, fees: parseNonNegativeDecimal('0'), taxes: parseNonNegativeDecimal('0'), currency: 'EUR' as CurrencyCode, source: 'MANUAL' }), /invalid wealth trade/i);
 });

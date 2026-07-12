@@ -35,7 +35,7 @@ The goal is to validate the workflow and create an early usable application:
 - Local persistence.
 - Expense list and basic summary/dashboard.
 - Small watchlist prototype.
-- Wealth-domain specification followed by a local transaction-to-holdings vertical slice.
+- Wealth-domain specification followed by local ledger persistence and manual entry for contributions, withdrawals, buys, and sells. Position calculation follows next.
 - Smooth local development and test loop.
 
 ### MVP

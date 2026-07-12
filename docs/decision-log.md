@@ -107,3 +107,28 @@ The built-in test runner plus `tsx` adds little configuration and dependency sur
 - Decimal precision is configured centrally, and rounding occurs only at explicit financial boundaries.
 - Repository mappings will store strings and perform no arithmetic.
 - The test stack may expand later for React Native components, but pure wealth calculations remain runnable without Expo, React, SQLite, or a device.
+
+## DEC-2026-07-12-04 — Start the wealth ledger with four manual transaction types
+
+- Status: Accepted
+- Date: 2026-07-12
+- Supersedes: None
+- Superseded by: None
+
+### Context
+
+The first usable transaction-entry increment needs to establish the manual workflow while avoiding premature assumptions about income, tax, and transfer workflows.
+
+### Decision
+
+Support manual contributions, withdrawals, buys, and sells in the initial wealth UI. Prevent a sell from exceeding the preceding recorded quantity for the same account and asset. Defer dividend, interest, standalone fee, standalone tax, transfers, and valuation features.
+
+### Rationale
+
+These four types cover funding an account and the basic acquisition/disposal workflow. Keeping the set narrow makes field validation, correction, and the next calculation milestone easier to verify.
+
+### Consequences
+
+- The UI creates a lightweight account or minimally classified asset when needed.
+- A full ledger projection remains the authority for later cross-history validation, cash warnings, cost basis, and performance.
+- Transaction deletion is soft so normal views omit it while audit/correction history remains available.
