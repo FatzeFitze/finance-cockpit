@@ -20,7 +20,8 @@ Finance Cockpit is a private, mobile-first personal-finance hub intended for gen
 
 - Begin with watchlists and pre-buy decision support.
 - Support candidate tracking, notes, research context, and structured reasoning.
-- Consider portfolio tracking later through privacy-conscious, read-only-first or import-first approaches.
+- Wealth tracking is the next active extension: one overall portfolio, lightweight broker accounts, assets, a transaction ledger, calculated positions and cash, prices, snapshots, allocation, and performance.
+- Build the wealth experience incrementally and manual-first; add reviewed workbook import only after the internal model and calculations are trustworthy.
 - Do not start with direct broker integrations or automated investment decisions.
 
 ## Delivery phases
@@ -34,6 +35,7 @@ The goal is to validate the workflow and create an early usable application:
 - Local persistence.
 - Expense list and basic summary/dashboard.
 - Small watchlist prototype.
+- Wealth-domain specification followed by a local transaction-to-holdings vertical slice.
 - Smooth local development and test loop.
 
 ### MVP
@@ -50,7 +52,7 @@ The goal is to become trustworthy enough for sustained private use:
 ### Possible later work
 
 - Recurring-expense detection, budgets, alerts, and subscription tracking.
-- Portfolio-tracker integration and CSV imports.
+- Reviewed portfolio workbook/CSV imports, price providers, and read-only integrations after the manual wealth workflow is trustworthy.
 - Web dashboard.
 - Richer investment research workspace.
 - Advanced analytics and carefully designed AI-supported insights.
@@ -111,7 +113,7 @@ Potential uses include receipt/invoice interpretation, field extraction, categor
 
 ## Open questions
 
-- What is the next concrete proof-of-concept milestone?
+- Which Milestone 1 increment should establish decimal types, calculation tests, and the wealth persistence schema?
 - Which existing screens and persistence flows are complete enough to retain?
 - When should web support enter the roadmap?
 - How long should the project remain local-only?

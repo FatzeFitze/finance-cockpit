@@ -166,6 +166,8 @@ The first versions prioritize correctness, auditability, privacy, and manual con
 
 ## Progress
 
-- Milestone 0A: in progress
-- Milestones 0B–8: not started
+- Milestone 0A: complete
+- Milestone 0B: complete
+- Milestone 0C: complete
+- Milestones 1–8: not started
 
