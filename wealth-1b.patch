@@ -1,0 +1,250 @@
+diff --git a/src/db/migrations.ts b/src/db/migrations.ts
+--- a/src/db/migrations.ts
++++ b/src/db/migrations.ts
+@@ -1,4 +1,5 @@
+ import type { SQLiteDatabase } from 'expo-sqlite';
++import { WEALTH_SCHEMA_SQL } from '@/src/features/wealth/data/wealth-schema';
+ 
+ type Migration = {
+   version: number;
+@@ -76,10 +77,19 @@ const migrations: Migration[] = [
+       `);
+     },
+   },
++  {
++    version: 6,
++    name: 'create core wealth tables',
++    up: async (db) => {
++      await db.execAsync(WEALTH_SCHEMA_SQL);
++    },
++  },
+ ];
+ 
+ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
++  await db.execAsync('PRAGMA foreign_keys = ON');
++
+   const latestVersion = migrations[migrations.length - 1]?.version ?? 0;
+ 
+   const result = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
+@@ -94,8 +104,10 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
+       throw new Error(`Missing migration for version ${currentDbVersion + 1}`);
+     }
+ 
+-    await nextMigration.up(db);
+-    await db.execAsync(`PRAGMA user_version = ${nextMigration.version}`);
++    await db.withTransactionAsync(async () => {
++      await nextMigration.up(db);
++      await db.execAsync(`PRAGMA user_version = ${nextMigration.version}`);
++    });
+ 
+     currentDbVersion = nextMigration.version;
+   }
+diff --git a/src/features/wealth/data/wealth-schema.ts b/src/features/wealth/data/wealth-schema.ts
+new file mode 100644
+--- /dev/null
++++ b/src/features/wealth/data/wealth-schema.ts
+@@ -0,0 +1,107 @@
++export const WEALTH_SCHEMA_SQL = `
++  CREATE TABLE wealth_portfolios (
++    id TEXT PRIMARY KEY NOT NULL,
++    name TEXT NOT NULL,
++    base_currency TEXT NOT NULL,
++    created_at TEXT NOT NULL,
++    updated_at TEXT NOT NULL
++  );
++
++  CREATE TABLE wealth_accounts (
++    id TEXT PRIMARY KEY NOT NULL,
++    portfolio_id TEXT NOT NULL,
++    name TEXT NOT NULL,
++    institution_name TEXT,
++    base_currency TEXT NOT NULL,
++    is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
++    created_at TEXT NOT NULL,
++    updated_at TEXT NOT NULL,
++    FOREIGN KEY (portfolio_id) REFERENCES wealth_portfolios(id) ON DELETE RESTRICT
++  );
++
++  CREATE INDEX wealth_accounts_portfolio_idx
++    ON wealth_accounts(portfolio_id);
++
++  CREATE TABLE wealth_assets (
++    id TEXT PRIMARY KEY NOT NULL,
++    name TEXT NOT NULL,
++    isin TEXT,
++    ticker TEXT,
++    asset_type TEXT NOT NULL CHECK (
++      asset_type IN ('ETF', 'STOCK', 'BOND', 'FUND', 'CASH_LIKE', 'OTHER')
++    ),
++    bucket TEXT NOT NULL CHECK (bucket IN ('CORE', 'SATELLITE', 'CASH')),
++    strategy_category TEXT NOT NULL CHECK (
++      strategy_category IN (
++        'BROAD_MARKET', 'SECTOR_BET', 'SMALL_CAP', 'SPECULATIVE', 'INCOME', 'CASH', 'OTHER'
++      )
++    ),
++    trading_currency TEXT NOT NULL,
++    is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
++    created_at TEXT NOT NULL,
++    updated_at TEXT NOT NULL
++  );
++
++  CREATE UNIQUE INDEX wealth_assets_isin_unique_idx
++    ON wealth_assets(isin)
++    WHERE isin IS NOT NULL;
++
++  CREATE TABLE wealth_transactions (
++    id TEXT PRIMARY KEY NOT NULL,
++    account_id TEXT NOT NULL,
++    asset_id TEXT,
++    type TEXT NOT NULL CHECK (
++      type IN ('CONTRIBUTION', 'WITHDRAWAL', 'BUY', 'SELL', 'DIVIDEND', 'INTEREST', 'FEE', 'TAX')
++    ),
++    trade_date TEXT NOT NULL,
++    sequence INTEGER NOT NULL CHECK (sequence >= 0),
++    quantity TEXT,
++    unit_price TEXT,
++    gross_amount TEXT,
++    fees TEXT NOT NULL DEFAULT '0',
++    taxes TEXT NOT NULL DEFAULT '0',
++    currency TEXT NOT NULL,
++    fx_rate_to_base TEXT,
++    base_amount TEXT,
++    reported_net_amount TEXT,
++    note TEXT,
++    source_type TEXT NOT NULL CHECK (source_type IN ('MANUAL', 'IMPORT')),
++    source_ref TEXT,
++    is_deleted INTEGER NOT NULL DEFAULT 0 CHECK (is_deleted IN (0, 1)),
++    created_at TEXT NOT NULL,
++    updated_at TEXT NOT NULL,
++    FOREIGN KEY (account_id) REFERENCES wealth_accounts(id) ON DELETE RESTRICT,
++    FOREIGN KEY (asset_id) REFERENCES wealth_assets(id) ON DELETE RESTRICT
++  );
++
++  CREATE INDEX wealth_transactions_projection_idx
++    ON wealth_transactions(account_id, asset_id, trade_date, sequence);
++
++  CREATE INDEX wealth_transactions_recent_idx
++    ON wealth_transactions(account_id, trade_date DESC, sequence DESC);
++
++  CREATE INDEX wealth_transactions_asset_idx
++    ON wealth_transactions(asset_id, trade_date, sequence)
++    WHERE asset_id IS NOT NULL;
++`;
+diff --git a/src/features/wealth/data/wealth-schema.test.ts b/src/features/wealth/data/wealth-schema.test.ts
+new file mode 100644
+--- /dev/null
++++ b/src/features/wealth/data/wealth-schema.test.ts
+@@ -0,0 +1,113 @@
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import { DatabaseSync } from 'node:sqlite';
++
++import { WEALTH_SCHEMA_SQL } from './wealth-schema';
++
++function createDatabase() {
++  const db = new DatabaseSync(':memory:');
++  db.exec('PRAGMA foreign_keys = ON');
++  return db;
++}
++
++test('creates the core wealth schema without changing existing tables', () => {
++  const db = createDatabase();
++  db.exec('CREATE TABLE expenses (id TEXT PRIMARY KEY, merchant TEXT NOT NULL)');
++  db.prepare('INSERT INTO expenses (id, merchant) VALUES (?, ?)').run('expense-1', 'Fictional Shop');
++
++  db.exec(WEALTH_SCHEMA_SQL);
++
++  const tableNames = db
++    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
++    .all()
++    .map((row) => row.name);
++
++  assert.deepEqual(tableNames, [
++    'expenses',
++    'wealth_accounts',
++    'wealth_assets',
++    'wealth_portfolios',
++    'wealth_transactions',
++  ]);
++  assert.deepEqual(db.prepare('SELECT * FROM expenses').get(), {
++    id: 'expense-1',
++    merchant: 'Fictional Shop',
++  });
++});
++
++test('enforces wealth foreign keys and retains referenced history', () => {
++  const db = createDatabase();
++  db.exec(WEALTH_SCHEMA_SQL);
++
++  assert.throws(() => {
++    db.prepare(`
++      INSERT INTO wealth_accounts (
++        id, portfolio_id, name, base_currency, created_at, updated_at
++      ) VALUES (?, ?, ?, ?, ?, ?)
++    `).run('account-a', 'missing-portfolio', 'Broker A', 'EUR', '2026-01-01', '2026-01-01');
++  }, /FOREIGN KEY constraint failed/);
++
++  db.prepare(`
++    INSERT INTO wealth_portfolios (id, name, base_currency, created_at, updated_at)
++    VALUES (?, ?, ?, ?, ?)
++  `).run('portfolio-1', 'Fictional Portfolio', 'EUR', '2026-01-01', '2026-01-01');
++  db.prepare(`
++    INSERT INTO wealth_accounts (
++      id, portfolio_id, name, base_currency, created_at, updated_at
++    ) VALUES (?, ?, ?, ?, ?, ?)
++  `).run('account-a', 'portfolio-1', 'Broker A', 'EUR', '2026-01-01', '2026-01-01');
++
++  assert.throws(
++    () => db.prepare('DELETE FROM wealth_portfolios WHERE id = ?').run('portfolio-1'),
++    /FOREIGN KEY constraint failed/,
++  );
++});
++
++test('enforces canonical enums, booleans, and unique normalized ISINs', () => {
++  const db = createDatabase();
++  db.exec(WEALTH_SCHEMA_SQL);
++
++  const insertAsset = db.prepare(`
++    INSERT INTO wealth_assets (
++      id, name, isin, asset_type, bucket, strategy_category, trading_currency,
++      is_active, created_at, updated_at
++    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
++  `);
++
++  insertAsset.run(
++    'asset-1', 'Fictional ETF', 'AT0000FICTION', 'ETF', 'CORE', 'BROAD_MARKET',
++    'EUR', 1, '2026-01-01', '2026-01-01',
++  );
++
++  assert.throws(() => {
++    insertAsset.run(
++      'asset-2', 'Duplicate ETF', 'AT0000FICTION', 'ETF', 'CORE', 'BROAD_MARKET',
++      'EUR', 1, '2026-01-01', '2026-01-01',
++    );
++  }, /UNIQUE constraint failed/);
++
++  assert.throws(() => {
++    insertAsset.run(
++      'asset-3', 'Invalid ETF', null, 'CRYPTO', 'CORE', 'BROAD_MARKET',
++      'EUR', 1, '2026-01-01', '2026-01-01',
++    );
++  }, /CHECK constraint failed/);
++});
++
++test('creates the projection and traversal indexes required by the contract', () => {
++  const db = createDatabase();
++  db.exec(WEALTH_SCHEMA_SQL);
++
++  const indexes = db
++    .prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name LIKE 'wealth_%' ORDER BY name")
++    .all()
++    .map((row) => row.name);
++
++  assert.deepEqual(indexes, [
++    'wealth_accounts_portfolio_idx',
++    'wealth_assets_isin_unique_idx',
++    'wealth_transactions_asset_idx',
++    'wealth_transactions_projection_idx',
++    'wealth_transactions_recent_idx',
++  ]);
++});

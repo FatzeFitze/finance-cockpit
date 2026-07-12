@@ -1,5 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { WEALTH_SCHEMA_SQL } from '@/src/features/wealth/data/wealth-schema';
+
 type Migration = {
   version: number;
   name: string;
@@ -104,9 +106,18 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 6,
+    name: 'create core wealth tables',
+    up: async (db) => {
+      await db.execAsync(WEALTH_SCHEMA_SQL);
+    },
+  },
 ];
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
+  await db.execAsync('PRAGMA foreign_keys = ON');
+
   const latestVersion = migrations[migrations.length - 1]?.version ?? 0;
 
   const result = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
@@ -121,8 +132,10 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       throw new Error(`Missing migration for version ${currentDbVersion + 1}`);
     }
 
-    await nextMigration.up(db);
-    await db.execAsync(`PRAGMA user_version = ${nextMigration.version}`);
+    await db.withTransactionAsync(async () => {
+      await nextMigration.up(db);
+      await db.execAsync(`PRAGMA user_version = ${nextMigration.version}`);
+    });
 
     currentDbVersion = nextMigration.version;
   }
